@@ -50,6 +50,10 @@ type alias Object =
     }
 
 
+
+-- Mirror
+
+
 type alias Mirror =
     LineSegment2d Pixels TopLeftCoordinates
 
@@ -59,8 +63,8 @@ type alias Mirror =
 
 
 type alias Model =
-    { objects : List Object
-    , mirrors : List Mirror
+    { object : Object
+    , mirror : Mirror
     }
 
 
@@ -70,14 +74,12 @@ type alias Model =
 
 init : Model
 init =
-    { objects =
-        [ { position = Point2d.pixels 50 70
-          , lightRay = Direction2d.degrees 20
-          }
-        ]
-    , mirrors =
-        [ LineSegment2d.from (Point2d.pixels 10 0) (Point2d.pixels 10 (Basics.toFloat size))
-        ]
+    { object =
+        { position = Point2d.pixels 50 70
+        , lightRay = Direction2d.degrees 20
+        }
+    , mirror =
+        LineSegment2d.from (Point2d.pixels 10 0) (Point2d.pixels 10 (Basics.toFloat size))
     }
 
 
@@ -96,9 +98,10 @@ view model =
         , height imageSize
         , viewBox (String.join "  " [ "0", "0", imageSize, imageSize ])
         ]
-        (List.map viewMirror model.mirrors
-            ++ List.map viewObject model.objects
-        )
+        [ viewMirror model.mirror
+        , viewLightPath [ model.mirror ] model.object
+        , viewObject model.object
+        ]
 
 
 viewMirror : Mirror -> Svg msg
