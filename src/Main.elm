@@ -9,8 +9,10 @@ import Html exposing (Html)
 import LineSegment2d exposing (LineSegment2d)
 import Pixels exposing (Pixels, pixels)
 import Point2d exposing (Point2d)
+import Polyline2d exposing (Polyline2d)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes exposing (..)
+import Vector2d exposing (Vector2d)
 
 
 
@@ -44,7 +46,7 @@ type TopLeftCoordinates
 
 type alias Object =
     { position : Point2d Pixels TopLeftCoordinates
-    , lightRay : Direction2d Pixels
+    , lightRay : Direction2d TopLeftCoordinates
     }
 
 
@@ -106,6 +108,42 @@ viewMirror mirror =
         , Attributes.strokeWidth "5"
         ]
         mirror
+
+
+lightPath : Object -> List Mirror -> Polyline2d Pixels TopLeftCoordinates
+lightPath object mirrors =
+    let
+        initialLine =
+            LineSegment2d.fromPointAndVector
+                object.position
+                (Direction2d.toVector object.lightRay
+                    |> Vector2d.scaleTo (Basics.toFloat size |> pixels)
+                )
+    in
+    let
+        segments =
+            [ initialLine ]
+    in
+    (object.position
+        :: List.map LineSegment2d.endPoint segments
+    )
+        |> Polyline2d.fromVertices
+
+
+viewLightPath : List Mirror -> Object -> Svg msg
+viewLightPath mirrors object =
+    let
+        path =
+            lightPath object mirrors
+    in
+    Svg.polyline2d
+        [ Attributes.stroke "yellow"
+        , Attributes.fill "none"
+        , Attributes.strokeWidth "5"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        ]
+        path
 
 
 viewObject : Object -> Svg msg
