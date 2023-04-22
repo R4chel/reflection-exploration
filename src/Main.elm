@@ -1,18 +1,19 @@
 module Main exposing (..)
 
-import Angle
+import Axis2d exposing (Axis2d)
 import Browser
-import Circle2d exposing (Circle2d)
+import Circle2d
 import Direction2d exposing (Direction2d)
 import Geometry.Svg as Svg
 import Html exposing (Html)
-import LineSegment2d exposing (LineSegment2d)
+import LineSegment2d exposing (LineSegment2d, endPoint, startPoint)
 import Pixels exposing (Pixels, pixels)
 import Point2d exposing (Point2d)
 import Polyline2d exposing (Polyline2d)
+import Quantity
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes exposing (..)
-import Vector2d exposing (Vector2d)
+import Vector2d
 
 
 
@@ -64,7 +65,7 @@ type alias Mirror =
 
 type alias Model =
     { object : Object
-    , mirror : Mirror
+    , mirrors : List Mirror
     }
 
 
@@ -78,8 +79,10 @@ init =
         { position = Point2d.pixels 50 70
         , lightRay = Direction2d.degrees 20
         }
-    , mirror =
-        LineSegment2d.from (Point2d.pixels 10 0) (Point2d.pixels 10 (Basics.toFloat size))
+    , mirrors =
+        [ LineSegment2d.from (Point2d.pixels 200 0) (Point2d.pixels 200 (Basics.toFloat size))
+        , LineSegment2d.from (Point2d.pixels 0 400) (Point2d.pixels 400 400)
+        ]
     }
 
 
@@ -98,10 +101,13 @@ view model =
         , height imageSize
         , viewBox (String.join "  " [ "0", "0", imageSize, imageSize ])
         ]
-        [ viewMirror model.mirror
-        , viewLightPath [ model.mirror ] model.object
-        , viewObject model.object
-        ]
+        ([ viewLightPath model.mirrors model.object
+         , viewObject model.object
+         ]
+            ++ List.map
+                viewMirror
+                model.mirrors
+        )
 
 
 viewMirror : Mirror -> Svg msg
@@ -113,10 +119,10 @@ viewMirror mirror =
         mirror
 
 
-lightPath : Object -> List Mirror -> Polyline2d Pixels TopLeftCoordinates
-lightPath object mirrors =
+lightPathOneMirror : Object -> Mirror -> Polyline2d Pixels TopLeftCoordinates
+lightPathOneMirror object mirror =
     let
-        initialLine =
+        lightSegment =
             LineSegment2d.fromPointAndVector
                 object.position
                 (Direction2d.toVector object.lightRay
@@ -125,7 +131,20 @@ lightPath object mirrors =
     in
     let
         segments =
-            [ initialLine ]
+            case LineSegment2d.intersectionPoint lightSegment mirror of
+                Nothing ->
+                    [ lightSegment ]
+
+                Just p ->
+                    let
+                        segment1 =
+                            LineSegment2d.from (startPoint lightSegment) p
+                    in
+                    let
+                        segment2 =
+                            LineSegment2d.from p (endPoint lightSegment) |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
+                    in
+                    [ segment1, segment2 ]
     in
     (object.position
         :: List.map LineSegment2d.endPoint segments
@@ -133,11 +152,52 @@ lightPath object mirrors =
         |> Polyline2d.fromVertices
 
 
+mirrorAsAxis : Mirror -> Axis2d Pixels TopLeftCoordinates
+mirrorAsAxis mirror =
+    Axis2d.throughPoints (startPoint mirror) (endPoint mirror) |> Maybe.withDefault (Axis2d.through (startPoint mirror) (Direction2d.degrees -90))
+
+
+chooseMirror : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> Maybe ( Mirror, Point2d Pixels TopLeftCoordinates )
+chooseMirror mirrors lightPath =
+    List.filterMap (\mirror -> LineSegment2d.intersectionPoint lightPath mirror |> Maybe.map (Tuple.pair mirror)) mirrors
+        -- filter out the mirror(s) that contain the startPoint by removing points where the intersection point is the startPoint
+        |> List.filter (\mirror_intersectionPoint -> Tuple.second mirror_intersectionPoint |> Point2d.equalWithin (Pixels.float 1) (startPoint lightPath) |> not)
+        |> Quantity.minimumBy
+            (\mirror_point -> Tuple.second mirror_point |> Point2d.distanceFrom (startPoint lightPath))
+
+
+
+-- Not yet handling potentially infinite loop
+
+
+findLightPath : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> List (Point2d Pixels TopLeftCoordinates)
+findLightPath mirrors path =
+    case chooseMirror mirrors path of
+        Nothing ->
+            [ startPoint path, endPoint path ]
+
+        Just ( mirror, intersectionPoint ) ->
+            let
+                newSegment =
+                    LineSegment2d.from intersectionPoint (endPoint path) |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
+            in
+            startPoint path :: findLightPath mirrors newSegment
+
+
 viewLightPath : List Mirror -> Object -> Svg msg
 viewLightPath mirrors object =
     let
+        lightSegment =
+            LineSegment2d.fromPointAndVector
+                object.position
+                (Direction2d.toVector object.lightRay
+                    |> Vector2d.scaleTo (Basics.toFloat size |> pixels)
+                )
+    in
+    let
         path =
-            lightPath object mirrors
+            findLightPath mirrors lightSegment
+                |> Polyline2d.fromVertices
     in
     Svg.polyline2d
         [ Attributes.stroke "yellow"
