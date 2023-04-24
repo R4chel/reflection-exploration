@@ -2,10 +2,13 @@ module Main exposing (..)
 
 import Axis2d exposing (Axis2d)
 import Browser
+import Browser.Events
 import Circle2d
 import Direction2d exposing (Direction2d)
+import Draggable
 import Geometry.Svg as Svg
-import Html exposing (Html)
+import Html exposing (Html, button, div, text)
+import Json.Decode as D
 import LineSegment2d exposing (LineSegment2d, endPoint, startPoint)
 import Pixels exposing (Pixels, pixels)
 import Point2d exposing (Point2d)
@@ -13,6 +16,7 @@ import Polyline2d exposing (Polyline2d)
 import Quantity
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes exposing (..)
+import Svg.Events as Events exposing (..)
 import Vector2d
 
 
@@ -30,10 +34,11 @@ size =
 
 
 main =
-    Browser.sandbox
+    Browser.element
         { init = init
         , update = update
         , view = view
+        , subscriptions = subscriptions
         }
 
 
@@ -41,12 +46,17 @@ main =
 -- Object
 
 
+type alias Id =
+    Int
+
+
 type TopLeftCoordinates
     = TopLeftCoordinates
 
 
 type alias Object =
-    { position : Point2d Pixels TopLeftCoordinates
+    { id : Id
+    , position : Point2d Pixels TopLeftCoordinates
     , lightRay : Direction2d TopLeftCoordinates
     }
 
@@ -56,7 +66,21 @@ type alias Object =
 
 
 type alias Mirror =
-    LineSegment2d Pixels TopLeftCoordinates
+    { id : Id
+    , position : LineSegment2d Pixels TopLeftCoordinates
+    }
+
+
+type alias MousePosition = Point2d Pixels TopLeftCoordinates
+
+
+
+-- CURSOR MODE: what does pressing the cursor do
+
+
+type CursorMode
+    = AddObject
+    | ChooseLightRay MousePosition
 
 
 
@@ -64,8 +88,11 @@ type alias Mirror =
 
 
 type alias Model =
-    { object : Object
+    { objects : List
+    Object
     , mirrors : List Mirror
+    , nextId : Int
+    , cursorMode : Maybe CursorMode
     }
 
 
@@ -73,17 +100,24 @@ type alias Model =
 -- INIT
 
 
-init : Model
-init =
-    { object =
-        { position = Point2d.pixels 50 70
-        , lightRay = Direction2d.degrees 20
-        }
-    , mirrors =
-        [ LineSegment2d.from (Point2d.pixels 200 0) (Point2d.pixels 200 (Basics.toFloat size))
-        , LineSegment2d.from (Point2d.pixels 0 400) (Point2d.pixels 400 400)
-        ]
+init : () -> ( Model, Cmd Msg )
+init () =
+    ( { objects =
+    [
+    { id = 1
+    , position = Point2d.pixels 50 70
+    , lightRay = Direction2d.degrees 50
     }
+    ]
+    , mirrors =
+            [ { id = 2, position = LineSegment2d.from (Point2d.pixels 200 0) (Point2d.pixels 200 (Basics.toFloat size)) }
+            , { id = 3, position = LineSegment2d.from (Point2d.pixels 0 400) (Point2d.pixels 400 400) }
+            ]
+      , nextId = 4
+      , cursorMode = Nothing
+      }
+    , Cmd.none
+    )
 
 
 
@@ -96,18 +130,21 @@ view model =
         imageSize =
             String.fromInt size
     in
-    Svg.svg
-        [ width imageSize
-        , height imageSize
-        , viewBox (String.join "  " [ "0", "0", imageSize, imageSize ])
+    div []
+        [ button [ onClick AddObjectButtonPressed ] [ text "Add Object" ]
+        , Svg.svg
+            [ width imageSize
+            , height imageSize
+            , viewBox (String.join "  " [ "0", "0", imageSize, imageSize ])
+            ]
+            ( ( List.concatMap (viewObject model) model.objects )
+
+             
+                ++ List.map
+                    viewMirror
+                    model.mirrors
+            )
         ]
-        ([ viewLightPath model.mirrors model.object
-         , viewObject model.object
-         ]
-            ++ List.map
-                viewMirror
-                model.mirrors
-        )
 
 
 viewMirror : Mirror -> Svg msg
@@ -116,50 +153,17 @@ viewMirror mirror =
         [ Attributes.stroke "grey"
         , Attributes.strokeWidth "5"
         ]
-        mirror
-
-
-lightPathOneMirror : Object -> Mirror -> Polyline2d Pixels TopLeftCoordinates
-lightPathOneMirror object mirror =
-    let
-        lightSegment =
-            LineSegment2d.fromPointAndVector
-                object.position
-                (Direction2d.toVector object.lightRay
-                    |> Vector2d.scaleTo (Basics.toFloat size |> pixels)
-                )
-    in
-    let
-        segments =
-            case LineSegment2d.intersectionPoint lightSegment mirror of
-                Nothing ->
-                    [ lightSegment ]
-
-                Just p ->
-                    let
-                        segment1 =
-                            LineSegment2d.from (startPoint lightSegment) p
-                    in
-                    let
-                        segment2 =
-                            LineSegment2d.from p (endPoint lightSegment) |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
-                    in
-                    [ segment1, segment2 ]
-    in
-    (object.position
-        :: List.map LineSegment2d.endPoint segments
-    )
-        |> Polyline2d.fromVertices
+        mirror.position
 
 
 mirrorAsAxis : Mirror -> Axis2d Pixels TopLeftCoordinates
 mirrorAsAxis mirror =
-    Axis2d.throughPoints (startPoint mirror) (endPoint mirror) |> Maybe.withDefault (Axis2d.through (startPoint mirror) (Direction2d.degrees -90))
+    Axis2d.throughPoints (startPoint mirror.position) (endPoint mirror.position) |> Maybe.withDefault (Axis2d.through (startPoint mirror.position) (Direction2d.degrees -90))
 
 
 chooseMirror : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> Maybe ( Mirror, Point2d Pixels TopLeftCoordinates )
 chooseMirror mirrors lightPath =
-    List.filterMap (\mirror -> LineSegment2d.intersectionPoint lightPath mirror |> Maybe.map (Tuple.pair mirror)) mirrors
+    List.filterMap (\mirror -> LineSegment2d.intersectionPoint lightPath mirror.position |> Maybe.map (Tuple.pair mirror)) mirrors
         -- filter out the mirror(s) that contain the startPoint by removing points where the intersection point is the startPoint
         |> List.filter (\mirror_intersectionPoint -> Tuple.second mirror_intersectionPoint |> Point2d.equalWithin (Pixels.float 1) (startPoint lightPath) |> not)
         |> Quantity.minimumBy
@@ -167,7 +171,7 @@ chooseMirror mirrors lightPath =
 
 
 
--- Not yet handling potentially infinite loop
+-- TODO findLightPath does not yet handling potentially infinite loop
 
 
 findLightPath : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> List (Point2d Pixels TopLeftCoordinates)
@@ -209,14 +213,18 @@ viewLightPath mirrors object =
         path
 
 
-viewObject : Object -> Svg msg
-viewObject object =
-    Svg.circle2d
-        [ Attributes.fill "blue"
-        ]
-        (Circle2d.withRadius (pixels 10)
-            object.position
-        )
+viewObject : Model -> Object -> List(  Svg Msg )
+viewObject model object =
+           let shape = 
+                      Svg.circle2d
+                          [ Attributes.fill "blue"
+                          , Events.onMouseOver Noop
+                          ]
+                          (Circle2d.withRadius (pixels 10)
+                              object.position
+                          )
+        in
+        [ viewLightPath model.mirrors object, shape]
 
 
 
@@ -225,10 +233,61 @@ viewObject object =
 
 type Msg
     = Noop
+    | AddObjectButtonPressed
+    | MouseClicked MousePosition
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Noop ->
+            let
+                () =
+                    Debug.log "noop" ()
+            in
+            ( model
+            , Cmd.none
+            )
+
+        AddObjectButtonPressed ->
+            ( { model | cursorMode = Just AddObject }
+            , Cmd.none
+            )
+
+        MouseClicked position ->
+            ( mouseClicked model position, Cmd.none )
+
+
+mouseClicked : Model -> MousePosition -> Model
+mouseClicked model position =
+    case model.cursorMode of
+        Nothing ->
             model
+
+        Just AddObject ->
+            { model | cursorMode = Just (ChooseLightRay position) }
+        Just (ChooseLightRay lastPosition) ->
+             case Direction2d.from lastPosition position of
+                  Nothing ->
+             -- TODO give helpful error messages
+                          model
+                  Just lightRay ->
+                       let newObject = {id = model.nextId , position = lastPosition, lightRay = lightRay} in
+                       { model | nextId = model.nextId + 1, cursorMode = Nothing, objects = newObject :: model.objects}
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Browser.Events.onClick
+            (D.map MouseClicked
+                (D.map2 Point2d.pixels
+                    (D.field "pageX" D.float)
+                    (D.field "pageY" D.float)
+                )
+            )
+        ]
