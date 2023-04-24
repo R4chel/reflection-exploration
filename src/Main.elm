@@ -2,10 +2,12 @@ module Main exposing (..)
 
 import Axis2d exposing (Axis2d)
 import Browser
+import Dict exposing ( Dict )
 import Browser.Events
 import Circle2d
 import Direction2d exposing (Direction2d)
 import Draggable
+import Draggable.Events exposing (onDragBy, onDragStart)
 import Element exposing (Element, alignLeft, centerX, column, el, padding, row, text)
 import Element.Input as Input
 import Element.Region as Region
@@ -21,8 +23,7 @@ import Rectangle2d exposing (Rectangle2d)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes exposing (..)
 import Svg.Events as Events exposing (..)
-import Vector2d
-
+import Vector2d exposing (Vector2d)
 
 
 -- CONSTANTS
@@ -71,6 +72,10 @@ type alias Room =
 type alias Id =
     Int
 
+type LabeledId =
+     ObjectId Id
+     | MirrorId Id
+
 
 type TopLeftCoordinates
     = TopLeftCoordinates
@@ -106,17 +111,25 @@ type CursorMode
     | ChooseLightRay MousePosition
 
 
+-- INVENTORY : things that can be added to scene
+type Inventory =
+      UnplacedObject
+     
 
 -- MODEL
 
 
 type alias Model =
     { room : Room
-    , objects : List Object
-    , mirrors : List Mirror
+    , objects : Dict Id Object
+    , mirrors : Dict Id Mirror
     , nextId : Int
     , cursorMode : Maybe CursorMode
+    , inventory : List Inventory 
+    , drag : Draggable.State LabeledId
+    , currentlyDragging : Maybe LabeledId
     }
+
 
 
 
@@ -127,17 +140,22 @@ init : () -> ( Model, Cmd Msg )
 init () =
     ( { room = Rectangle2d.from (Point2d.pixels 0 0) (Point2d.pixels roomSize roomSize)
       , objects =
-            [ { id = 1
+            Dict.fromList [ ( 1, { id = 1
               , position = Point2d.pixels 50 70
               , lightRay = Direction2d.degrees 50
               }
-            ]
+ )            ]
       , mirrors =
-            [ { id = 2, position = LineSegment2d.from (Point2d.pixels 200 0) (Point2d.pixels 200 500) }
-            , { id = 3, position = LineSegment2d.from (Point2d.pixels 0 400) (Point2d.pixels 400 400) }
-            ]
+           Dict.fromList [(2,  { id = 2, position = LineSegment2d.from (Point2d.pixels 200 0) (Point2d.pixels 200 500) } )
+           ,(3,
+            { id = 3, position = LineSegment2d.from (Point2d.pixels 0 400) (Point2d.pixels 400 400) }
+           )
+           ]
       , nextId = 4
       , cursorMode = Nothing
+      ,inventory = [ UnplacedObject ]
+              , drag = Draggable.init
+              , currentlyDragging = Nothing
       }
     , Cmd.none
     )
@@ -171,12 +189,13 @@ viewScene model =
         , height imageSize
         , viewBox (String.join "  " [ "0", "0", imageSize, imageSize ])
         ]
+        [Svg.node "g" []
         (viewRoom model.room
-            :: List.concatMap (viewObject model) model.objects
+            :: List.concatMap (viewObject model) (Dict.values model.objects )
             ++ List.map
                 viewMirror
-                model.mirrors
-        )
+                (Dict.values model.mirrors)
+        )]
 
 
 viewRoom : Room -> Svg msg
@@ -184,11 +203,12 @@ viewRoom room =
     Svg.rectangle2d [ Attributes.stroke "black", Attributes.fill "burlywood" ] room
 
 
-viewMirror : Mirror -> Svg msg
+viewMirror : Mirror -> Svg Msg
 viewMirror mirror =
     Svg.lineSegment2d
         [ Attributes.stroke "grey"
         , Attributes.strokeWidth "5"
+        , Draggable.mouseTrigger (MirrorId mirror.id) DragMsg
         ]
         mirror.position
 
@@ -255,14 +275,14 @@ viewObject model object =
     let
         shape =
             Svg.circle2d
-                [ Attributes.fill "blue"
-                , Events.onMouseOver Noop
+                [ Attributes.fill "blue",
+                Draggable.mouseTrigger (ObjectId object.id ) DragMsg
                 ]
                 (Circle2d.withRadius (pixels 10)
                     object.position
                 )
     in
-    [ viewLightPath model.mirrors object, shape ]
+    [ viewLightPath (Dict.values model.mirrors ) object, shape ]
 
 
 
@@ -273,11 +293,24 @@ type Msg
     = Noop
     | AddObjectButtonPressed
     | MouseClicked MousePosition
+    | OnDragBy ( Vector2d Pixels TopLeftCoordinates )
+    | DragMsg (Draggable.Msg LabeledId)
+    | StartDragging LabeledId
+    | StopDragging
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        DragMsg dragMsg ->
+                 Draggable.update dragConfig dragMsg model
+        StartDragging id ->
+                      ({model | currentlyDragging = Just id}, Cmd.none)
+        StopDragging ->
+                     ({ model | currentlyDragging = Nothing }, Cmd.none)
+        OnDragBy delta ->
+                 (onDragBy model delta, Cmd.none)
+
         Noop ->
             let
                 () =
@@ -294,6 +327,29 @@ update msg model =
 
         MouseClicked position ->
             ( mouseClicked model position, Cmd.none )
+
+dragConfig : Draggable.Config LabeledId Msg
+dragConfig =
+    Draggable.customConfig
+        [ Draggable.Events.onDragBy (\( dx, dy ) -> Vector2d.pixels dx dy |> OnDragBy)
+        , Draggable.Events.onDragStart StartDragging
+        ]
+
+onDragBy : Model ->  Vector2d Pixels TopLeftCoordinates -> Model
+onDragBy model delta =
+         case model.currentlyDragging of
+              Nothing ->
+              -- Note: I think getting an onDragMsg if nothing is being dragged may represent a bug, and potentially something should be logged or this should be handled in some way
+                      model
+              Just (ObjectId id) ->
+                          -- not having an object corresponding to a dragged id is very suprising. Currently that case is being silently ignored 
+                   { model | objects = Dict.update id (Maybe.map (\object -> { object | position = Point2d.translateBy delta object.position }) ) model.objects}
+                       
+              Just (MirrorId id) ->
+                          -- not having a mirror  corresponding to a dragged id is very suprising. Currently that case is being silently ignored 
+                   { model | mirrors = Dict.update id (Maybe.map (\mirror-> { mirror | position =LineSegment2d.translateBy delta mirror.position }) ) model.mirrors}
+
+
 
 
 mouseClicked : Model -> MousePosition -> Model
@@ -316,7 +372,7 @@ mouseClicked model position =
                         newObject =
                             { id = model.nextId, position = lastPosition, lightRay = lightRay }
                     in
-                    { model | nextId = model.nextId + 1, cursorMode = Nothing, objects = newObject :: model.objects }
+                    { model | nextId = model.nextId + 1, cursorMode = Nothing, objects = Dict.insert newObject.id newObject model.objects }
 
 
 
@@ -325,12 +381,4 @@ mouseClicked model position =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Browser.Events.onClick
-            (D.map MouseClicked
-                (D.map2 Point2d.pixels
-                    (D.field "pageX" D.float)
-                    (D.field "pageY" D.float)
-                )
-            )
-        ]
+              Draggable.subscriptions DragMsg model.drag
