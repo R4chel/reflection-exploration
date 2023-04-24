@@ -6,14 +6,18 @@ import Browser.Events
 import Circle2d
 import Direction2d exposing (Direction2d)
 import Draggable
+import Element exposing (Element, alignLeft, centerX, column, el, padding, row, text)
+import Element.Input as Input
+import Element.Region as Region
 import Geometry.Svg as Svg
-import Html exposing (Html, button, div, text)
+import Html exposing (Html)
 import Json.Decode as D
 import LineSegment2d exposing (LineSegment2d, endPoint, startPoint)
 import Pixels exposing (Pixels, pixels)
 import Point2d exposing (Point2d)
 import Polyline2d exposing (Polyline2d)
 import Quantity
+import Rectangle2d exposing (Rectangle2d)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes exposing (..)
 import Svg.Events as Events exposing (..)
@@ -24,9 +28,19 @@ import Vector2d
 -- CONSTANTS
 
 
-size : Int
-size =
+imageSize : String
+imageSize =
+    "1500"
+
+
+roomSize : Float
+roomSize =
     1000
+
+
+lightLength : Float
+lightLength =
+    roomSize
 
 
 
@@ -40,6 +54,14 @@ main =
         , view = view
         , subscriptions = subscriptions
         }
+
+
+
+-- Room
+
+
+type alias Room =
+    Rectangle2d Pixels TopLeftCoordinates
 
 
 
@@ -71,7 +93,8 @@ type alias Mirror =
     }
 
 
-type alias MousePosition = Point2d Pixels TopLeftCoordinates
+type alias MousePosition =
+    Point2d Pixels TopLeftCoordinates
 
 
 
@@ -88,8 +111,8 @@ type CursorMode
 
 
 type alias Model =
-    { objects : List
-    Object
+    { room : Room
+    , objects : List Object
     , mirrors : List Mirror
     , nextId : Int
     , cursorMode : Maybe CursorMode
@@ -102,15 +125,15 @@ type alias Model =
 
 init : () -> ( Model, Cmd Msg )
 init () =
-    ( { objects =
-    [
-    { id = 1
-    , position = Point2d.pixels 50 70
-    , lightRay = Direction2d.degrees 50
-    }
-    ]
-    , mirrors =
-            [ { id = 2, position = LineSegment2d.from (Point2d.pixels 200 0) (Point2d.pixels 200 (Basics.toFloat size)) }
+    ( { room = Rectangle2d.from (Point2d.pixels 0 0) (Point2d.pixels roomSize roomSize)
+      , objects =
+            [ { id = 1
+              , position = Point2d.pixels 50 70
+              , lightRay = Direction2d.degrees 50
+              }
+            ]
+      , mirrors =
+            [ { id = 2, position = LineSegment2d.from (Point2d.pixels 200 0) (Point2d.pixels 200 500) }
             , { id = 3, position = LineSegment2d.from (Point2d.pixels 0 400) (Point2d.pixels 400 400) }
             ]
       , nextId = 4
@@ -126,25 +149,39 @@ init () =
 
 view : Model -> Html Msg
 view model =
-    let
-        imageSize =
-            String.fromInt size
-    in
-    div []
-        [ button [ onClick AddObjectButtonPressed ] [ text "Add Object" ]
-        , Svg.svg
-            [ width imageSize
-            , height imageSize
-            , viewBox (String.join "  " [ "0", "0", imageSize, imageSize ])
+    column []
+        [ el [ Region.heading 1, centerX ] (text "Reflection Exploration")
+        , row [ alignLeft, padding 5 ]
+            [ Element.html (viewScene model)
+            , Element.row []
+                [ Input.button []
+                    { onPress = Just AddObjectButtonPressed
+                    , label = text "Add Object"
+                    }
+                ]
             ]
-            ( ( List.concatMap (viewObject model) model.objects )
-
-             
-                ++ List.map
-                    viewMirror
-                    model.mirrors
-            )
         ]
+        |> Element.layout []
+
+
+viewScene : Model -> Html Msg
+viewScene model =
+    Svg.svg
+        [ width imageSize
+        , height imageSize
+        , viewBox (String.join "  " [ "0", "0", imageSize, imageSize ])
+        ]
+        (viewRoom model.room
+            :: List.concatMap (viewObject model) model.objects
+            ++ List.map
+                viewMirror
+                model.mirrors
+        )
+
+
+viewRoom : Room -> Svg msg
+viewRoom room =
+    Svg.rectangle2d [ Attributes.stroke "black", Attributes.fill "burlywood" ] room
 
 
 viewMirror : Mirror -> Svg msg
@@ -195,7 +232,7 @@ viewLightPath mirrors object =
             LineSegment2d.fromPointAndVector
                 object.position
                 (Direction2d.toVector object.lightRay
-                    |> Vector2d.scaleTo (Basics.toFloat size |> pixels)
+                    |> Vector2d.scaleTo (pixels lightLength)
                 )
     in
     let
@@ -213,18 +250,19 @@ viewLightPath mirrors object =
         path
 
 
-viewObject : Model -> Object -> List(  Svg Msg )
+viewObject : Model -> Object -> List (Svg Msg)
 viewObject model object =
-           let shape = 
-                      Svg.circle2d
-                          [ Attributes.fill "blue"
-                          , Events.onMouseOver Noop
-                          ]
-                          (Circle2d.withRadius (pixels 10)
-                              object.position
-                          )
-        in
-        [ viewLightPath model.mirrors object, shape]
+    let
+        shape =
+            Svg.circle2d
+                [ Attributes.fill "blue"
+                , Events.onMouseOver Noop
+                ]
+                (Circle2d.withRadius (pixels 10)
+                    object.position
+                )
+    in
+    [ viewLightPath model.mirrors object, shape ]
 
 
 
@@ -266,14 +304,19 @@ mouseClicked model position =
 
         Just AddObject ->
             { model | cursorMode = Just (ChooseLightRay position) }
+
         Just (ChooseLightRay lastPosition) ->
-             case Direction2d.from lastPosition position of
-                  Nothing ->
-             -- TODO give helpful error messages
-                          model
-                  Just lightRay ->
-                       let newObject = {id = model.nextId , position = lastPosition, lightRay = lightRay} in
-                       { model | nextId = model.nextId + 1, cursorMode = Nothing, objects = newObject :: model.objects}
+            case Direction2d.from lastPosition position of
+                Nothing ->
+                    -- TODO give helpful error messages
+                    model
+
+                Just lightRay ->
+                    let
+                        newObject =
+                            { id = model.nextId, position = lastPosition, lightRay = lightRay }
+                    in
+                    { model | nextId = model.nextId + 1, cursorMode = Nothing, objects = newObject :: model.objects }
 
 
 
