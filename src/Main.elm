@@ -74,6 +74,7 @@ type alias Id =
 
 type LabeledId =
      ObjectId Id
+     | ObjectLightId Id
      | MirrorId Id
 
 
@@ -229,7 +230,7 @@ chooseMirror mirrors lightPath =
 
 
 -- TODO findLightPath does not yet handling potentially infinite loop
-
+-- TODO case of light hitting intersection of mirrors is not handled correctly
 
 findLightPath : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> List (Point2d Pixels TopLeftCoordinates)
 findLightPath mirrors path =
@@ -245,7 +246,7 @@ findLightPath mirrors path =
             startPoint path :: findLightPath mirrors newSegment
 
 
-viewLightPath : List Mirror -> Object -> Svg msg
+viewLightPath : List Mirror -> Object -> Svg Msg
 viewLightPath mirrors object =
     let
         lightSegment =
@@ -266,6 +267,7 @@ viewLightPath mirrors object =
         , Attributes.strokeWidth "5"
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
+        ,        Draggable.mouseTrigger (ObjectLightId object.id ) DragMsg
         ]
         path
 
@@ -342,8 +344,15 @@ onDragBy model delta =
               -- Note: I think getting an onDragMsg if nothing is being dragged may represent a bug, and potentially something should be logged or this should be handled in some way
                       model
               Just (ObjectId id) ->
-                          -- not having an object corresponding to a dragged id is very suprising. Currently that case is being silently ignored 
+                          -- not having an {object/mirror} corresponding to a dragged id is very suprising. Currently that case is being silently ignored 
                    { model | objects = Dict.update id (Maybe.map (\object -> { object | position = Point2d.translateBy delta object.position }) ) model.objects}
+                       
+              Just (ObjectLightId id) ->
+                   case Vector2d.direction delta of
+                        Nothing ->
+                                model
+                        Just deltaDirection ->
+                                { model | objects = Dict.update id (Maybe.map (\object -> { object | lightRay= Direction2d.rotateBy (Direction2d.toAngle deltaDirection ) object.lightRay }) ) model.objects}
                        
               Just (MirrorId id) ->
                           -- not having a mirror  corresponding to a dragged id is very suprising. Currently that case is being silently ignored 
