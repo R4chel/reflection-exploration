@@ -22,6 +22,7 @@ import Quantity
 import Rectangle2d exposing (Rectangle2d)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes exposing (..)
+import Svg.Events
 import Vector2d exposing (Vector2d)
 
 
@@ -31,7 +32,7 @@ import Vector2d exposing (Vector2d)
 
 imageSize : String
 imageSize =
-    "1500"
+    "1000"
 
 
 roomSize : Float
@@ -41,7 +42,7 @@ roomSize =
 
 lightLength : Float
 lightLength =
-    roomSize
+    500
 
 
 
@@ -115,14 +116,6 @@ type alias MousePosition =
 
 
 
--- INVENTORY : things that can be added to scene
-
-
-type Inventory
-    = UnplacedObject
-
-
-
 -- MODEL
 
 
@@ -131,10 +124,10 @@ type alias Model =
     , objects : Dict Id Object
     , mirrors : Dict Id Mirror
     , nextId : Int
-    , inventory : List Inventory
     , drag : Draggable.State SelectableComponentId
     , currentlyDragging : Maybe SelectableComponentId
     , lastMousePosition : MousePosition
+    , highlightedElement : Maybe Id
     }
 
 
@@ -175,10 +168,10 @@ init () =
                   )
                 ]
       , nextId = 4
-      , inventory = [ UnplacedObject ]
       , drag = Draggable.init
       , currentlyDragging = Nothing
       , lastMousePosition = Point2d.origin
+      , highlightedElement = Nothing
       }
     , Cmd.none
     )
@@ -216,9 +209,8 @@ viewScene model =
             [ [ viewRoom model.room ]
             , List.concatMap (viewObject model) (Dict.values model.objects)
             , List.map
-                viewMirror
+                (viewMirror model)
                 (Dict.values model.mirrors)
-            , viewInventory model.inventory
             ]
         )
 
@@ -232,35 +224,61 @@ viewRoom room =
         room
 
 
-viewMirror : Mirror -> Svg Msg
-viewMirror mirror =
-    Svg.g [ Attributes.stroke "grey", fill "drakgrey" ]
+mouseOverEvents : Id -> List (Svg.Attribute Msg)
+mouseOverEvents id =
+    [ Svg.Events.onMouseOver (MouseOver (Just id))
+    , Svg.Events.onMouseOut (MouseOver Nothing)
+    ]
+
+
+viewMirror : Model -> Mirror -> Svg Msg
+viewMirror model mirror =
+    let
+        isHighlighted =
+            model.highlightedElement == Just mirror.id
+    in
+    Svg.g
+        (List.concat
+            [ [ fill "drakgrey"
+              , stroke "grey"
+              ]
+            , if isHighlighted then
+                [ stroke "green"
+                , strokeWidth "10"
+                , fill "blue"
+                ]
+
+              else
+                [ strokeWidth "10" ]
+            , mouseOverEvents mirror.id
+            ]
+        )
         [ Svg.lineSegment2d
-            [ Attributes.strokeWidth "5"
-            , Draggable.mouseTrigger (MirrorSelected Segment mirror.id) DragMsg
+            [ Draggable.mouseTrigger (MirrorSelected Segment mirror.id) DragMsg
             ]
             mirror.position
         , Svg.circle2d
-            [ stroke "none"
-            , Draggable.mouseTrigger (MirrorSelected StartPoint mirror.id) DragMsg
+            [ Draggable.mouseTrigger (MirrorSelected StartPoint mirror.id) DragMsg
             ]
-            (Circle2d.withRadius (pixels 6) (startPoint mirror.position))
+            (Circle2d.withRadius (pixels 10) (startPoint mirror.position))
         , Svg.circle2d
-            [ stroke "none"
-            , Draggable.mouseTrigger (MirrorSelected EndPoint mirror.id) DragMsg
+            [ Draggable.mouseTrigger (MirrorSelected EndPoint mirror.id) DragMsg
             ]
-            (Circle2d.withRadius (pixels 6) (endPoint mirror.position))
+            (Circle2d.withRadius (pixels 10) (endPoint mirror.position))
         ]
 
 
 mirrorAsAxis : Mirror -> Axis2d Pixels TopLeftCoordinates
 mirrorAsAxis mirror =
     Axis2d.throughPoints (startPoint mirror.position) (endPoint mirror.position)
+        -- Maybe.withDefault is used because if the mirror has lenght 0,
+        -- the axis can't be determined. This is extremely unlikely,
+        -- and possibly doesn't need to be worried about so in that case an arbitrary direction is chosen.
         |> Maybe.withDefault (Axis2d.through (startPoint mirror.position) (Direction2d.degrees -90))
 
 
-chooseMirror : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> Maybe ( Mirror, Point2d Pixels TopLeftCoordinates )
-chooseMirror mirrors lightPath =
+findClosestMirror : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> Maybe ( Mirror, Point2d Pixels TopLeftCoordinates )
+findClosestMirror mirrors lightPath =
     mirrors
         |> List.filterMap
             (\mirror ->
@@ -279,13 +297,12 @@ chooseMirror mirrors lightPath =
 
 
 
--- TODO findLightPath does not yet handling potentially infinite loop
 -- TODO case of light hitting intersection of mirrors is not handled correctly
 
 
 findLightPath : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> List (Point2d Pixels TopLeftCoordinates)
 findLightPath mirrors path =
-    case chooseMirror mirrors path of
+    case findClosestMirror mirrors path of
         Nothing ->
             [ startPoint path, endPoint path ]
 
@@ -335,52 +352,11 @@ viewObject model object =
                     (ObjectSelected ObjectPosition object.id)
                     DragMsg
                 ]
-                (Circle2d.withRadius (pixels 10)
+                (Circle2d.withRadius (pixels 25)
                     object.position
                 )
     in
     [ viewLightPath (Dict.values model.mirrors) object, shape ]
-
-
-viewInventory : List Inventory -> List (Svg Msg)
-viewInventory inventory =
-    let
-        boxSize =
-            pixels 50
-
-        buffer =
-            pixels 100
-
-        box =
-            Rectangle2d.withDimensions
-                ( boxSize, boxSize )
-                (Angle.degrees 0)
-                (Point2d.xy (roomSize |> pixels |> Quantity.plus buffer) buffer)
-    in
-    List.indexedMap
-        (\index item ->
-            let
-                yOffset =
-                    Quantity.multiplyBy (toFloat index) (Quantity.plus buffer boxSize)
-
-                currentBox =
-                    Rectangle2d.translateIn Direction2d.negativeY yOffset box
-            in
-            [ Svg.rectangle2d
-                [ stroke "black", fill "white" ]
-                currentBox
-            , case item of
-                UnplacedObject ->
-                    Svg.circle2d
-                        [ Attributes.fill "green"
-                        ]
-                        (Circle2d.withRadius (pixels 10)
-                            (Rectangle2d.centerPoint currentBox)
-                        )
-            ]
-        )
-        inventory
-        |> List.concat
 
 
 
@@ -389,6 +365,7 @@ viewInventory inventory =
 
 type Msg
     = ResetButtonPressed
+    | MouseOver (Maybe Id)
     | OnDragBy (Vector2d Pixels TopLeftCoordinates)
     | DragMsg (Draggable.Msg SelectableComponentId)
     | DragLightRay (Draggable.Msg SelectableComponentId) MousePosition
@@ -399,6 +376,14 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ResetButtonPressed ->
+            init ()
+
+        MouseOver id ->
+            ( { model | highlightedElement = id }
+            , Cmd.none
+            )
+
         DragMsg dragMsg ->
             Draggable.update dragConfig dragMsg model
 
@@ -414,9 +399,6 @@ update msg model =
 
         OnDragBy delta ->
             ( onDragBy model delta, Cmd.none )
-
-        ResetButtonPressed ->
-            init ()
 
 
 dragConfig : Draggable.Config SelectableComponentId Msg
