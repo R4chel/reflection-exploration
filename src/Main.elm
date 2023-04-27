@@ -278,17 +278,17 @@ viewMirror model mirror =
     in
     Svg.g
         (List.concat
-            [ [ fill "drakgrey"
-              , stroke "grey"
-              ]
-            , if isHighlighted then
+            [ if isHighlighted then
                 [ stroke "green"
-                , strokeWidth "10"
-                , fill "blue"
+                , strokeWidth "15"
+                , fill "darkgrey"
                 ]
 
               else
-                [ strokeWidth "10" ]
+                [ stroke "grey"
+                , strokeWidth "12"
+                , fill "lightgrey"
+                ]
             , mouseOverEvents mirror.id
             ]
         )
