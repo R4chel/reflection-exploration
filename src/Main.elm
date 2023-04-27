@@ -289,7 +289,15 @@ viewMirror model mirror =
     let
         isHighlighted : Bool
         isHighlighted =
-            model.highlightedElement == Just mirror.id
+            model.highlightedElement
+                == Just mirror.id
+                || (case model.currentlyDragging of
+                        Just (MirrorSelected _ id) ->
+                            id == mirror.id
+
+                        _ ->
+                            False
+                   )
     in
     Svg.g
         (List.concat
@@ -415,7 +423,14 @@ viewObject model object =
     let
         isHighlighted : Bool
         isHighlighted =
-            model.highlightedElement == Just object.id
+            (model.highlightedElement == Just object.id)
+                || (case model.currentlyDragging of
+                        Just (ObjectSelected _ id) ->
+                            id == object.id
+
+                        _ ->
+                            False
+                   )
 
         radius : Quantity Float Pixels
         radius =
