@@ -44,7 +44,7 @@ roomSize =
 
 lightLength : Float
 lightLength =
-    500
+    1000
 
 
 
@@ -187,6 +187,10 @@ init () =
 type WhichScenario
     = Scenario1
     | Scenario2
+    | Scenario3
+    | Scenario4
+    | Scenario5
+    | Scenario6
 
 
 scenario : WhichScenario -> Model
@@ -194,7 +198,7 @@ scenario whichScenario =
     case whichScenario of
         Scenario1 ->
             emptyModel
-                |> addObject (Object (Point2d.pixels 200 100) (Direction2d.degrees 45))
+                |> addObject (Object (Point2d.pixels 150 150) (Direction2d.degrees 45))
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 20 400)
@@ -204,20 +208,93 @@ scenario whichScenario =
 
         Scenario2 ->
             emptyModel
-                |> addObject
-                    (Object (Point2d.pixels 50 70) (Direction2d.degrees 50))
+                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 45))
                 |> addMirror
                     (Mirror
-                        (LineSegment2d.from
-                            (Point2d.pixels 200 0)
-                            (Point2d.pixels 200 500)
+                        (LineSegment2d.from (Point2d.pixels 100 650)
+                            (Point2d.pixels 800 650)
                         )
                     )
                 |> addMirror
                     (Mirror
-                        (LineSegment2d.from
-                            (Point2d.pixels 0 400)
-                            (Point2d.pixels 400 400)
+                        (LineSegment2d.from (Point2d.pixels 450 150)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+
+        Scenario3 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 45))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 650)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 800 200)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+
+        Scenario4 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 110))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 650)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 800 200)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 200)
+                            (Point2d.pixels 100 650)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 800 200)
+                            (Point2d.pixels 200 200)
+                        )
+                    )
+
+        Scenario5 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 200 300) (Direction2d.degrees 70))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 250)
+                            (Point2d.pixels 700 250)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 400)
+                            (Point2d.pixels 700 400)
+                        )
+                    )
+
+        Scenario6 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 200 300) (Direction2d.degrees 70))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 250)
+                            (Point2d.pixels 700 250)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 400)
+                            (Point2d.pixels 700 400)
                         )
                     )
 
@@ -236,8 +313,13 @@ view model =
                 [ Element.column [ padding 20, Element.spacing 20 ]
                     [ styledButton (ScenarioButtonPressed Scenario1) "Scenario 1"
                     , styledButton (ScenarioButtonPressed Scenario2) "Scenario 2"
+                    , styledButton (ScenarioButtonPressed Scenario3) "Scenario 3"
+                    , styledButton (ScenarioButtonPressed Scenario4) "Scenario 4"
+                    , styledButton (ScenarioButtonPressed Scenario5) "Scenario 5"
+                    , styledButton (ScenarioButtonPressed Scenario6) "Scenario 6"
                     , styledButton AddObjectButtonPressed "Add Another Object"
                     , styledButton AddMirrorButtonPressed "Add Another Mirror"
+                    , styledButton ClearSceneButtonPressed "Clear Scene"
                     ]
                 ]
             ]
@@ -400,6 +482,7 @@ viewLightPath mirrors object highlight =
                 "5"
             )
         , Attributes.fill "none"
+        , strokeOpacity "0.9"
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
         , Draggable.customMouseTrigger (ObjectSelected LightRay object.id)
@@ -452,7 +535,7 @@ viewObject model object =
 
 
 type Msg
-    = ResetButtonPressed
+    = ClearSceneButtonPressed
     | ScenarioButtonPressed WhichScenario
     | MouseOver (Maybe Id)
     | OnDragBy (Vector2d Pixels TopLeftCoordinates)
@@ -469,8 +552,8 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ResetButtonPressed ->
-            init ()
+        ClearSceneButtonPressed ->
+            ( emptyModel, Cmd.none )
 
         ScenarioButtonPressed whichScenario ->
             ( scenario whichScenario, Cmd.none )
