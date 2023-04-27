@@ -8,7 +8,7 @@ import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
 import Draggable
 import Draggable.Events
-import Element exposing (alignLeft, centerX, column, el, padding, rgb255, row, text)
+import Element exposing (Element, alignLeft, centerX, column, el, padding, rgb255, row, text)
 import Element.Background as Background
 import Element.Input as Input
 import Element.Region as Region
@@ -97,17 +97,16 @@ type TopLeftCoordinates
 
 
 type alias Object =
-    { id : Id
-    , position : Point2d Pixels TopLeftCoordinates
+    { position : Point2d Pixels TopLeftCoordinates
     , lightRay : Direction2d TopLeftCoordinates
+    , id : Id
     }
 
 
-generateObject : Room -> Id -> Random.Generator Object
-generateObject room id =
-    Random.map3
+generateObject : Room -> Random.Generator (Id -> Object)
+generateObject room =
+    Random.map2
         Object
-        (Random.constant id)
         (Rectangle2d.randomPoint room)
         Direction2d.random
 
@@ -117,16 +116,15 @@ generateObject room id =
 
 
 type alias Mirror =
-    { id : Id
-    , position : LineSegment2d Pixels TopLeftCoordinates
+    { position : LineSegment2d Pixels TopLeftCoordinates
+    , id : Id
     }
 
 
-generateMirror : Room -> Id -> Random.Generator Mirror
-generateMirror room id =
-    Random.map2
+generateMirror : Room -> Random.Generator (Id -> Mirror)
+generateMirror room =
+    Random.map
         Mirror
-        (Random.constant id)
         (Random.map2 LineSegment2d.from
             (Rectangle2d.randomPoint room)
             (Rectangle2d.randomPoint room)
@@ -161,46 +159,67 @@ type alias Model =
 -- INIT
 
 
+emptyModel : Model
+emptyModel =
+    { room =
+        Rectangle2d.from (Point2d.pixels 0 0) (Point2d.pixels roomSize roomSize)
+    , objects = Dict.empty
+    , mirrors = Dict.empty
+    , nextId = 1
+    , drag = Draggable.init
+    , currentlyDragging = Nothing
+    , lastMousePosition = Point2d.origin
+    , highlightedElement = Nothing
+    }
+
+
 init : () -> ( Model, Cmd Msg )
 init () =
-    ( { room =
-            Rectangle2d.from (Point2d.pixels 0 0) (Point2d.pixels roomSize roomSize)
-      , objects =
-            Dict.fromList
-                [ ( 1
-                  , { id = 1
-                    , position = Point2d.pixels 50 70
-                    , lightRay = Direction2d.degrees 50
-                    }
-                  )
-                ]
-      , mirrors =
-            Dict.fromList
-                [ ( 2
-                  , { id = 2
-                    , position =
-                        LineSegment2d.from
-                            (Point2d.pixels 200 0)
-                            (Point2d.pixels 200 500)
-                    }
-                  )
-                , ( 3
-                  , { id = 3
-                    , position =
-                        LineSegment2d.from
-                            (Point2d.pixels 0 400)
-                            (Point2d.pixels 400 400)
-                    }
-                  )
-                ]
-      , nextId = 4
-      , drag = Draggable.init
-      , currentlyDragging = Nothing
-      , lastMousePosition = Point2d.origin
-      , highlightedElement = Nothing
-      }
+    ( scenario Scenario1
     , Cmd.none
     )
+
+
+
+-- SCENARIOS
+
+
+type WhichScenario
+    = Scenario1
+    | Scenario2
+
+
+scenario : WhichScenario -> Model
+scenario whichScenario =
+    case whichScenario of
+        Scenario1 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 200 100) (Direction2d.degrees 45))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 20 400)
+                            (Point2d.pixels 800 400)
+                        )
+                    )
+
+        Scenario2 ->
+            emptyModel
+                |> addObject
+                    (Object (Point2d.pixels 50 70) (Direction2d.degrees 50))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from
+                            (Point2d.pixels 200 0)
+                            (Point2d.pixels 200 500)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from
+                            (Point2d.pixels 0 400)
+                            (Point2d.pixels 400 400)
+                        )
+                    )
 
 
 
@@ -215,25 +234,24 @@ view model =
             [ Element.html (viewScene model)
             , Element.row [ padding 20 ]
                 [ Element.column [ padding 20, Element.spacing 20 ]
-                    [ Input.button [ Background.color (rgb255 41 152 252), padding 20 ]
-                        { onPress = Just ResetButtonPressed
-                        , label = text "Reset"
-                        }
-                    , Input.button
-                        [ Background.color (rgb255 41 152 252), padding 20 ]
-                        { onPress = Just AddObjectButtonPressed
-                        , label = text "Add Another Object"
-                        }
-                    , Input.button
-                        [ Background.color (rgb255 41 152 252), padding 20 ]
-                        { onPress = Just AddMirrorButtonPressed
-                        , label = text "Add Another Mirror"
-                        }
+                    [ styledButton (ScenarioButtonPressed Scenario1) "Scenario 1"
+                    , styledButton (ScenarioButtonPressed Scenario2) "Scenario 2"
+                    , styledButton AddObjectButtonPressed "Add Another Object"
+                    , styledButton AddMirrorButtonPressed "Add Another Mirror"
                     ]
                 ]
             ]
         ]
         |> Element.layout []
+
+
+styledButton : Msg -> String -> Element Msg
+styledButton action label =
+    Input.button
+        [ Background.color (rgb255 41 152 252), padding 20 ]
+        { onPress = Just action
+        , label = text label
+        }
 
 
 viewScene : Model -> Html Msg
@@ -281,14 +299,13 @@ viewMirror model mirror =
             [ if isHighlighted then
                 [ stroke "green"
                 , strokeWidth "15"
-                , fill "darkgrey"
                 ]
 
               else
                 [ stroke "grey"
                 , strokeWidth "12"
-                , fill "lightgrey"
                 ]
+            , [ fill "lightgrey" ]
             , mouseOverEvents mirror.id
             ]
         )
@@ -436,6 +453,7 @@ viewObject model object =
 
 type Msg
     = ResetButtonPressed
+    | ScenarioButtonPressed WhichScenario
     | MouseOver (Maybe Id)
     | OnDragBy (Vector2d Pixels TopLeftCoordinates)
     | DragMsg (Draggable.Msg SelectableComponentId)
@@ -443,9 +461,9 @@ type Msg
     | StartDragging SelectableComponentId
     | StopDragging
     | AddObjectButtonPressed
-    | AddObject Object
+    | AddObject (Id -> Object)
     | AddMirrorButtonPressed
-    | AddMirror Mirror
+    | AddMirror (Id -> Mirror)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -454,27 +472,22 @@ update msg model =
         ResetButtonPressed ->
             init ()
 
-        AddObjectButtonPressed ->
-            let
-                objectId =
-                    model.nextId
-            in
-            ( { model | nextId = model.nextId + 1 }, Random.generate AddObject (generateObject model.room objectId) )
+        ScenarioButtonPressed whichScenario ->
+            ( scenario whichScenario, Cmd.none )
 
-        AddObject object ->
-            ( { model | objects = Dict.insert object.id object model.objects }
+        AddObjectButtonPressed ->
+            ( model, Random.generate AddObject (generateObject model.room) )
+
+        AddObject objectWithoutId ->
+            ( addObject objectWithoutId model
             , Cmd.none
             )
 
         AddMirrorButtonPressed ->
-            let
-                mirrorId =
-                    model.nextId
-            in
-            ( { model | nextId = model.nextId + 1 }, Random.generate AddMirror (generateMirror model.room mirrorId) )
+            ( model, Random.generate AddMirror (generateMirror model.room) )
 
-        AddMirror mirror ->
-            ( { model | mirrors = Dict.insert mirror.id mirror model.mirrors }
+        AddMirror mirrorWithoutId ->
+            ( addMirror mirrorWithoutId model
             , Cmd.none
             )
 
@@ -498,6 +511,27 @@ update msg model =
 
         OnDragBy delta ->
             ( onDragBy model delta, Cmd.none )
+
+
+addObject : (Id -> Object) -> Model -> Model
+addObject objectWithoutId model =
+    let
+        id =
+            model.nextId
+    in
+    { model
+        | nextId = model.nextId + 1
+        , objects = Dict.insert id (objectWithoutId id) model.objects
+    }
+
+
+addMirror : (Id -> Mirror) -> Model -> Model
+addMirror mirrorWithoutId model =
+    let
+        id =
+            model.nextId
+    in
+    { model | nextId = model.nextId + 1, mirrors = Dict.insert id (mirrorWithoutId id) model.mirrors }
 
 
 dragConfig : Draggable.Config SelectableComponentId Msg
