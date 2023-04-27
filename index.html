@@ -5627,28 +5627,6 @@ var $author$project$Main$scenario = function (whichScenario) {
 									A2($ianmackenzie$elm_geometry$Point2d$pixels, 400, 400),
 									$ianmackenzie$elm_geometry$Direction2d$degrees(110)),
 								$author$project$Main$emptyModel)))));
-		case 4:
-			return A2(
-				$author$project$Main$addMirror,
-				$author$project$Main$Mirror(
-					A2(
-						$ianmackenzie$elm_geometry$LineSegment2d$from,
-						A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 400),
-						A2($ianmackenzie$elm_geometry$Point2d$pixels, 700, 400))),
-				A2(
-					$author$project$Main$addMirror,
-					$author$project$Main$Mirror(
-						A2(
-							$ianmackenzie$elm_geometry$LineSegment2d$from,
-							A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 250),
-							A2($ianmackenzie$elm_geometry$Point2d$pixels, 700, 250))),
-					A2(
-						$author$project$Main$addObject,
-						A2(
-							$author$project$Main$Object,
-							A2($ianmackenzie$elm_geometry$Point2d$pixels, 200, 300),
-							$ianmackenzie$elm_geometry$Direction2d$degrees(70)),
-						$author$project$Main$emptyModel)));
 		default:
 			return A2(
 				$author$project$Main$addMirror,
@@ -5679,7 +5657,7 @@ var $author$project$Main$init = function (_v0) {
 		$elm$core$Platform$Cmd$none);
 };
 var $author$project$Main$DragMsg = function (a) {
-	return {$: 4, a: a};
+	return {$: 8, a: a};
 };
 var $zaboco$elm_draggable$Internal$DragAt = function (a) {
 	return {$: 1, a: a};
@@ -6026,18 +6004,18 @@ var $author$project$Main$subscriptions = function (model) {
 	return A2($zaboco$elm_draggable$Draggable$subscriptions, $author$project$Main$DragMsg, model.bS);
 };
 var $author$project$Main$AddMirror = function (a) {
-	return {$: 11, a: a};
+	return {$: 5, a: a};
 };
 var $author$project$Main$AddObject = function (a) {
-	return {$: 9, a: a};
-};
-var $author$project$Main$OnDragBy = function (a) {
 	return {$: 3, a: a};
 };
-var $author$project$Main$StartDragging = function (a) {
-	return {$: 6, a: a};
+var $author$project$Main$OnDragBy = function (a) {
+	return {$: 7, a: a};
 };
-var $author$project$Main$StopDragging = {$: 7};
+var $author$project$Main$StartDragging = function (a) {
+	return {$: 10, a: a};
+};
+var $author$project$Main$StopDragging = {$: 11};
 var $zaboco$elm_draggable$Draggable$Config = $elm$core$Basics$identity;
 var $zaboco$elm_draggable$Internal$defaultConfig = {
 	e_: function (_v0) {
@@ -7015,41 +6993,41 @@ var $author$project$Main$update = F2(
 				return _Utils_Tuple2(
 					$author$project$Main$scenario(whichScenario),
 					$elm$core$Platform$Cmd$none);
-			case 8:
+			case 2:
 				return _Utils_Tuple2(
 					model,
 					A2(
 						$elm$random$Random$generate,
 						$author$project$Main$AddObject,
 						$author$project$Main$generateObject(model.bf)));
-			case 9:
+			case 3:
 				var objectWithoutId = msg.a;
 				return _Utils_Tuple2(
 					A2($author$project$Main$addObject, objectWithoutId, model),
 					$elm$core$Platform$Cmd$none);
-			case 10:
+			case 4:
 				return _Utils_Tuple2(
 					model,
 					A2(
 						$elm$random$Random$generate,
 						$author$project$Main$AddMirror,
 						$author$project$Main$generateMirror(model.bf)));
-			case 11:
+			case 5:
 				var mirrorWithoutId = msg.a;
 				return _Utils_Tuple2(
 					A2($author$project$Main$addMirror, mirrorWithoutId, model),
 					$elm$core$Platform$Cmd$none);
-			case 2:
+			case 6:
 				var id = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{ba: id}),
 					$elm$core$Platform$Cmd$none);
-			case 4:
+			case 8:
 				var dragMsg = msg.a;
 				return A3($zaboco$elm_draggable$Draggable$update, $author$project$Main$dragConfig, dragMsg, model);
-			case 5:
+			case 9:
 				var dragMsg = msg.a;
 				var position = msg.b;
 				return A3(
@@ -7059,7 +7037,7 @@ var $author$project$Main$update = F2(
 					_Utils_update(
 						model,
 						{aR: position}));
-			case 6:
+			case 10:
 				var id = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
@@ -7068,7 +7046,7 @@ var $author$project$Main$update = F2(
 							a2: $elm$core$Maybe$Just(id)
 						}),
 					$elm$core$Platform$Cmd$none);
-			case 7:
+			case 11:
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
@@ -7081,14 +7059,13 @@ var $author$project$Main$update = F2(
 					$elm$core$Platform$Cmd$none);
 		}
 	});
-var $author$project$Main$AddMirrorButtonPressed = {$: 10};
-var $author$project$Main$AddObjectButtonPressed = {$: 8};
+var $author$project$Main$AddMirrorButtonPressed = {$: 4};
+var $author$project$Main$AddObjectButtonPressed = {$: 2};
 var $author$project$Main$ClearSceneButtonPressed = {$: 0};
 var $author$project$Main$Scenario2 = 1;
 var $author$project$Main$Scenario3 = 2;
 var $author$project$Main$Scenario4 = 3;
 var $author$project$Main$Scenario5 = 4;
-var $author$project$Main$Scenario6 = 5;
 var $author$project$Main$ScenarioButtonPressed = function (a) {
 	return {$: 1, a: a};
 };
@@ -13250,7 +13227,7 @@ var $ianmackenzie$elm_geometry_svg$Geometry$Svg$lineSegment2d = F2(
 			_List_Nil);
 	});
 var $author$project$Main$MouseOver = function (a) {
-	return {$: 2, a: a};
+	return {$: 6, a: a};
 };
 var $elm$svg$Svg$Events$onMouseOut = function (msg) {
 	return A2(
@@ -13408,7 +13385,7 @@ var $author$project$Main$ObjectSelected = F2(
 	});
 var $author$project$Main$DragLightRay = F2(
 	function (a, b) {
-		return {$: 5, a: a, b: b};
+		return {$: 9, a: a, b: b};
 	});
 var $zaboco$elm_draggable$Draggable$customMouseTrigger = F3(
 	function (key, customDecoder, customEnvelope) {
@@ -13691,7 +13668,7 @@ var $author$project$Main$findLightPath = F2(
 			var _v1 = _v0.a;
 			var mirror = _v1.a;
 			var intersectionPoint = _v1.b;
-			var newSegment = A2(
+			var mirroredSegment = A2(
 				$ianmackenzie$elm_geometry$LineSegment2d$mirrorAcross,
 				$author$project$Main$mirrorAsAxis(mirror),
 				A2(
@@ -13701,7 +13678,7 @@ var $author$project$Main$findLightPath = F2(
 			return A2(
 				$elm$core$List$cons,
 				$ianmackenzie$elm_geometry$LineSegment2d$startPoint(path),
-				A2($author$project$Main$findLightPath, mirrors, newSegment));
+				A2($author$project$Main$findLightPath, mirrors, mirroredSegment));
 		}
 	});
 var $ianmackenzie$elm_geometry$LineSegment2d$fromPointAndVector = F2(
@@ -14013,10 +13990,6 @@ var $author$project$Main$view = function (model) {
 											$author$project$Main$styledButton,
 											$author$project$Main$ScenarioButtonPressed(4),
 											'Scenario 5'),
-											A2(
-											$author$project$Main$styledButton,
-											$author$project$Main$ScenarioButtonPressed(5),
-											'Scenario 6'),
 											A2($author$project$Main$styledButton, $author$project$Main$AddObjectButtonPressed, 'Add Another Object'),
 											A2($author$project$Main$styledButton, $author$project$Main$AddMirrorButtonPressed, 'Add Another Mirror'),
 											A2($author$project$Main$styledButton, $author$project$Main$ClearSceneButtonPressed, 'Clear Scene')
