@@ -122,6 +122,21 @@ type alias Mirror =
     }
 
 
+generateMirror : Room -> Id -> Random.Generator Mirror
+generateMirror room id =
+    Random.map2
+        Mirror
+        (Random.constant id)
+        (Random.map2 LineSegment2d.from
+            (Rectangle2d.randomPoint room)
+            (Rectangle2d.randomPoint room)
+        )
+
+
+
+-- Mouse Position
+
+
 type alias MousePosition =
     Point2d Pixels TopLeftCoordinates
 
@@ -208,6 +223,11 @@ view model =
                         [ Background.color (rgb255 41 152 252), padding 20 ]
                         { onPress = Just AddObjectButtonPressed
                         , label = text "Add Another Object"
+                        }
+                    , Input.button
+                        [ Background.color (rgb255 41 152 252), padding 20 ]
+                        { onPress = Just AddMirrorButtonPressed
+                        , label = text "Add Another Mirror"
                         }
                     ]
                 ]
@@ -424,6 +444,8 @@ type Msg
     | StopDragging
     | AddObjectButtonPressed
     | AddObject Object
+    | AddMirrorButtonPressed
+    | AddMirror Mirror
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -441,6 +463,18 @@ update msg model =
 
         AddObject object ->
             ( { model | objects = Dict.insert object.id object model.objects }
+            , Cmd.none
+            )
+
+        AddMirrorButtonPressed ->
+            let
+                mirrorId =
+                    model.nextId
+            in
+            ( { model | nextId = model.nextId + 1 }, Random.generate AddMirror (generateMirror model.room mirrorId) )
+
+        AddMirror mirror ->
+            ( { model | mirrors = Dict.insert mirror.id mirror model.mirrors }
             , Cmd.none
             )
 
