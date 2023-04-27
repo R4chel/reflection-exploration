@@ -1,6 +1,5 @@
 module Main exposing (..)
 
-import Angle
 import Axis2d exposing (Axis2d)
 import Browser
 import Circle2d
@@ -18,8 +17,8 @@ import Json.Decode as D
 import LineSegment2d exposing (LineSegment2d, endPoint, startPoint)
 import Pixels exposing (Pixels, pixels)
 import Point2d exposing (Point2d)
-import Polyline2d
-import Quantity
+import Polyline2d exposing (Polyline2d)
+import Quantity exposing (Quantity)
 import Random
 import Rectangle2d exposing (Rectangle2d)
 import Svg exposing (Svg)
@@ -467,16 +466,18 @@ findLightPath mirrors path =
 
         Just ( mirror, intersectionPoint ) ->
             let
-                newSegment =
+                mirroredSegment : LineSegment2d Pixels TopLeftCoordinates
+                mirroredSegment =
                     LineSegment2d.from intersectionPoint (endPoint path)
                         |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
             in
-            startPoint path :: findLightPath mirrors newSegment
+            startPoint path :: findLightPath mirrors mirroredSegment
 
 
 viewLightPath : List Mirror -> Object -> Bool -> Svg Msg
 viewLightPath mirrors object highlight =
     let
+        lightSegment : LineSegment2d Pixels TopLeftCoordinates
         lightSegment =
             object.lightRay
                 |> Direction2d.toVector
@@ -484,6 +485,7 @@ viewLightPath mirrors object highlight =
                 |> LineSegment2d.fromPointAndVector
                     object.position
 
+        path : Polyline2d Pixels TopLeftCoordinates
         path =
             findLightPath mirrors lightSegment
                 |> Polyline2d.fromVertices
@@ -520,16 +522,16 @@ viewObject model object =
         isHighlighted : Bool
         isHighlighted =
             model.highlightedElement == Just object.id
-    in
-    let
+
+        radius : Quantity Float Pixels
         radius =
             if isHighlighted then
                 pixels 30
 
             else
                 pixels 25
-    in
-    let
+
+        shape : Svg Msg
         shape =
             Svg.circle2d
                 [ Attributes.fill "blue"
@@ -621,6 +623,7 @@ update msg model =
 addObject : (Id -> Object) -> Model -> Model
 addObject objectWithoutId model =
     let
+        id : Id
         id =
             model.nextId
     in
@@ -633,6 +636,7 @@ addObject objectWithoutId model =
 addMirror : (Id -> Mirror) -> Model -> Model
 addMirror mirrorWithoutId model =
     let
+        id : Id
         id =
             model.nextId
     in
@@ -666,6 +670,7 @@ onDragBy model delta =
 
         Just (ObjectSelected LightRay id) ->
             let
+                lastMousePosition : Point2d Pixels TopLeftCoordinates
                 lastMousePosition =
                     model.lastMousePosition
                         |> Point2d.translateBy delta
@@ -710,6 +715,7 @@ dragObject mousePosition delta component object =
 dragMirror : Vector2d Pixels TopLeftCoordinates -> MirrorComponent -> Mirror -> Mirror
 dragMirror delta component mirror =
     let
+        position : LineSegment2d Pixels TopLeftCoordinates
         position =
             case component of
                 Segment ->
