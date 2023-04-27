@@ -8,7 +8,8 @@ import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
 import Draggable
 import Draggable.Events
-import Element exposing (alignLeft, centerX, column, el, padding, row, text)
+import Element exposing (alignLeft, centerX, column, el, padding, rgb255, row, text)
+import Element.Background as Background
 import Element.Input as Input
 import Element.Region as Region
 import Geometry.Svg as Svg
@@ -19,6 +20,7 @@ import Pixels exposing (Pixels, pixels)
 import Point2d exposing (Point2d)
 import Polyline2d
 import Quantity
+import Random
 import Rectangle2d exposing (Rectangle2d)
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes exposing (..)
@@ -99,6 +101,15 @@ type alias Object =
     , position : Point2d Pixels TopLeftCoordinates
     , lightRay : Direction2d TopLeftCoordinates
     }
+
+
+generateObject : Room -> Id -> Random.Generator Object
+generateObject room id =
+    Random.map3
+        Object
+        (Random.constant id)
+        (Rectangle2d.randomPoint room)
+        Direction2d.random
 
 
 
@@ -183,15 +194,22 @@ init () =
 
 view : Model -> Html Msg
 view model =
-    column []
-        [ el [ Region.heading 1, centerX ] (text "Reflection Exploration")
+    column [ padding 30 ]
+        [ el [ Region.heading 1, centerX, padding 50 ] (text "Reflection Exploration")
         , row [ alignLeft, padding 5 ]
             [ Element.html (viewScene model)
-            , Element.row []
-                [ Input.button []
-                    { onPress = Just ResetButtonPressed
-                    , label = text "Reset"
-                    }
+            , Element.row [ padding 20 ]
+                [ Element.column [ padding 20, Element.spacing 20 ]
+                    [ Input.button [ Background.color (rgb255 41 152 252), padding 20 ]
+                        { onPress = Just ResetButtonPressed
+                        , label = text "Reset"
+                        }
+                    , Input.button
+                        [ Background.color (rgb255 41 152 252), padding 20 ]
+                        { onPress = Just AddObjectButtonPressed
+                        , label = text "Add Another Object"
+                        }
+                    ]
                 ]
             ]
         ]
@@ -207,7 +225,7 @@ viewScene model =
         ]
         (List.concat
             [ [ viewRoom model.room ]
-            , List.concatMap (viewObject model) (Dict.values model.objects)
+            , List.map (viewObject model) (Dict.values model.objects)
             , List.map
                 (viewMirror model)
                 (Dict.values model.mirrors)
@@ -234,6 +252,7 @@ mouseOverEvents id =
 viewMirror : Model -> Mirror -> Svg Msg
 viewMirror model mirror =
     let
+        isHighlighted : Bool
         isHighlighted =
             model.highlightedElement == Just mirror.id
     in
@@ -285,7 +304,10 @@ findClosestMirror mirrors lightPath =
                 LineSegment2d.intersectionPoint lightPath mirror.position
                     |> Maybe.map (Tuple.pair mirror)
             )
-        -- filter out the mirror(s) that contain the startPoint by removing points where the intersection point is the startPoint
+        -- filter out the mirror(s) that contain the startPoint by removing points where the intersection point is the startPoint.
+        -- This is was added to solve the problem of after an intersection the closest mirror being the mirror that had just been touched because it is distance 0.
+        -- This does create a new problem of not handling the case of multiple mirrors meeting at one point correctly becuase additional mirrors are also filtered out.
+        -- TODO case of light hitting intersection of mirrors is not handled correctly
         |> List.filter
             (\mirror_intersectionPoint ->
                 Tuple.second mirror_intersectionPoint
@@ -294,10 +316,6 @@ findClosestMirror mirrors lightPath =
             )
         |> Quantity.minimumBy
             (\mirror_point -> Tuple.second mirror_point |> Point2d.distanceFrom (startPoint lightPath))
-
-
-
--- TODO case of light hitting intersection of mirrors is not handled correctly
 
 
 findLightPath : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> List (Point2d Pixels TopLeftCoordinates)
@@ -315,8 +333,8 @@ findLightPath mirrors path =
             startPoint path :: findLightPath mirrors newSegment
 
 
-viewLightPath : List Mirror -> Object -> Svg Msg
-viewLightPath mirrors object =
+viewLightPath : List Mirror -> Object -> Bool -> Svg Msg
+viewLightPath mirrors object highlight =
     let
         lightSegment =
             object.lightRay
@@ -330,9 +348,21 @@ viewLightPath mirrors object =
                 |> Polyline2d.fromVertices
     in
     Svg.polyline2d
-        [ Attributes.stroke "yellow"
+        [ Attributes.stroke
+            (if highlight then
+                "yellow"
+
+             else
+                "#FFFEB8"
+            )
+        , Attributes.strokeWidth
+            (if highlight then
+                "8"
+
+             else
+                "5"
+            )
         , Attributes.fill "none"
-        , Attributes.strokeWidth "5"
         , Attributes.strokeLinecap "round"
         , Attributes.strokeLinejoin "round"
         , Draggable.customMouseTrigger (ObjectSelected LightRay object.id)
@@ -342,21 +372,42 @@ viewLightPath mirrors object =
         path
 
 
-viewObject : Model -> Object -> List (Svg Msg)
+viewObject : Model -> Object -> Svg Msg
 viewObject model object =
+    let
+        isHighlighted : Bool
+        isHighlighted =
+            model.highlightedElement == Just object.id
+    in
+    let
+        radius =
+            if isHighlighted then
+                pixels 30
+
+            else
+                pixels 25
+    in
     let
         shape =
             Svg.circle2d
                 [ Attributes.fill "blue"
+                , Attributes.stroke
+                    (if isHighlighted then
+                        "green"
+
+                     else
+                        "none"
+                    )
                 , Draggable.mouseTrigger
                     (ObjectSelected ObjectPosition object.id)
                     DragMsg
                 ]
-                (Circle2d.withRadius (pixels 25)
+                (Circle2d.withRadius radius
                     object.position
                 )
     in
-    [ viewLightPath (Dict.values model.mirrors) object, shape ]
+    Svg.g (mouseOverEvents object.id)
+        [ viewLightPath (Dict.values model.mirrors) object isHighlighted, shape ]
 
 
 
@@ -371,6 +422,8 @@ type Msg
     | DragLightRay (Draggable.Msg SelectableComponentId) MousePosition
     | StartDragging SelectableComponentId
     | StopDragging
+    | AddObjectButtonPressed
+    | AddObject Object
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -378,6 +431,18 @@ update msg model =
     case msg of
         ResetButtonPressed ->
             init ()
+
+        AddObjectButtonPressed ->
+            let
+                objectId =
+                    model.nextId
+            in
+            ( { model | nextId = model.nextId + 1 }, Random.generate AddObject (generateObject model.room objectId) )
+
+        AddObject object ->
+            ( { model | objects = Dict.insert object.id object model.objects }
+            , Cmd.none
+            )
 
         MouseOver id ->
             ( { model | highlightedElement = id }
@@ -462,6 +527,7 @@ dragObject mousePosition delta component object =
         LightRay ->
             case Direction2d.from object.position mousePosition of
                 Nothing ->
+                    -- if the mouse position is exactly on the object there is no direction. Current logic is to ignore this case an not update the light ray
                     object
 
                 Just directionToMouse ->
