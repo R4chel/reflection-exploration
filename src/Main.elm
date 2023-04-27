@@ -1,4 +1,4 @@
-module Main exposing (..)
+module Main exposing (Model, Msg, main)
 
 import Axis2d exposing (Axis2d)
 import Browser
@@ -50,6 +50,7 @@ lightLength =
 -- MAIN
 
 
+main : Program () Model Msg
 main =
     Browser.element
         { init = init
@@ -60,24 +61,36 @@ main =
 
 
 
+-- TYPES
+
+
+type Coordinates
+    = Coordinates
+
+
+
 -- Room
 
 
 type alias Room =
-    Rectangle2d Pixels TopLeftCoordinates
-
-
-
--- Object
+    Rectangle2d Pixels Coordinates
 
 
 type alias Id =
     Int
 
 
+
+-- ObjectComponent is selectable part of an object
+
+
 type ObjectComponent
     = ObjectPosition
     | LightRay
+
+
+
+-- MirrorComponent is the selectable part of a mirror
 
 
 type MirrorComponent
@@ -91,19 +104,20 @@ type SelectableComponentId
     | MirrorSelected MirrorComponent Id
 
 
-type TopLeftCoordinates
-    = TopLeftCoordinates
+
+-- Object
 
 
 type alias Object =
-    { position : Point2d Pixels TopLeftCoordinates
-    , lightRay : Direction2d TopLeftCoordinates
+    { position : Point2d Pixels Coordinates
+    , lightRay : Direction2d Coordinates
     , id : Id
     }
 
 
 generateObject : Room -> Random.Generator (Id -> Object)
 generateObject room =
+    -- Ids need to be unique across objects and mirrors so the id is not attached until the object is added to the odel
     Random.map2
         Object
         (Rectangle2d.randomPoint room)
@@ -115,7 +129,7 @@ generateObject room =
 
 
 type alias Mirror =
-    { position : LineSegment2d Pixels TopLeftCoordinates
+    { position : LineSegment2d Pixels Coordinates
     , id : Id
     }
 
@@ -135,7 +149,7 @@ generateMirror room =
 
 
 type alias MousePosition =
-    Point2d Pixels TopLeftCoordinates
+    Point2d Pixels Coordinates
 
 
 
@@ -180,125 +194,6 @@ init () =
 
 
 
--- SCENARIOS
-
-
-type WhichScenario
-    = Scenario1
-    | Scenario2
-    | Scenario3
-    | Scenario4
-    | Scenario5
-    | Scenario6
-
-
-scenario : WhichScenario -> Model
-scenario whichScenario =
-    case whichScenario of
-        Scenario1 ->
-            emptyModel
-                |> addObject (Object (Point2d.pixels 150 150) (Direction2d.degrees 45))
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 20 400)
-                            (Point2d.pixels 800 400)
-                        )
-                    )
-
-        Scenario2 ->
-            emptyModel
-                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 45))
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 650)
-                            (Point2d.pixels 800 650)
-                        )
-                    )
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 450 150)
-                            (Point2d.pixels 800 650)
-                        )
-                    )
-
-        Scenario3 ->
-            emptyModel
-                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 45))
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 650)
-                            (Point2d.pixels 800 650)
-                        )
-                    )
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 800 200)
-                            (Point2d.pixels 800 650)
-                        )
-                    )
-
-        Scenario4 ->
-            emptyModel
-                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 110))
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 650)
-                            (Point2d.pixels 800 650)
-                        )
-                    )
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 800 200)
-                            (Point2d.pixels 800 650)
-                        )
-                    )
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 200)
-                            (Point2d.pixels 100 650)
-                        )
-                    )
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 800 200)
-                            (Point2d.pixels 200 200)
-                        )
-                    )
-
-        Scenario5 ->
-            emptyModel
-                |> addObject (Object (Point2d.pixels 200 300) (Direction2d.degrees 70))
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 250)
-                            (Point2d.pixels 700 250)
-                        )
-                    )
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 400)
-                            (Point2d.pixels 700 400)
-                        )
-                    )
-
-        Scenario6 ->
-            emptyModel
-                |> addObject (Object (Point2d.pixels 200 300) (Direction2d.degrees 70))
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 250)
-                            (Point2d.pixels 700 250)
-                        )
-                    )
-                |> addMirror
-                    (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 400)
-                            (Point2d.pixels 700 400)
-                        )
-                    )
-
-
-
 -- VIEW
 
 
@@ -315,7 +210,6 @@ view model =
                     , styledButton (ScenarioButtonPressed Scenario3) "Scenario 3"
                     , styledButton (ScenarioButtonPressed Scenario4) "Scenario 4"
                     , styledButton (ScenarioButtonPressed Scenario5) "Scenario 5"
-                    , styledButton (ScenarioButtonPressed Scenario6) "Scenario 6"
                     , styledButton AddObjectButtonPressed "Add Another Object"
                     , styledButton AddMirrorButtonPressed "Add Another Mirror"
                     , styledButton ClearSceneButtonPressed "Clear Scene"
@@ -427,7 +321,7 @@ viewMirror model mirror =
         ]
 
 
-mirrorAsAxis : Mirror -> Axis2d Pixels TopLeftCoordinates
+mirrorAsAxis : Mirror -> Axis2d Pixels Coordinates
 mirrorAsAxis mirror =
     Axis2d.throughPoints (startPoint mirror.position) (endPoint mirror.position)
         -- Maybe.withDefault is used because if the mirror has lenght 0,
@@ -436,7 +330,7 @@ mirrorAsAxis mirror =
         |> Maybe.withDefault (Axis2d.through (startPoint mirror.position) (Direction2d.degrees -90))
 
 
-findClosestMirror : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> Maybe ( Mirror, Point2d Pixels TopLeftCoordinates )
+findClosestMirror : List Mirror -> LineSegment2d Pixels Coordinates -> Maybe ( Mirror, Point2d Pixels Coordinates )
 findClosestMirror mirrors lightPath =
     mirrors
         |> List.filterMap
@@ -458,7 +352,7 @@ findClosestMirror mirrors lightPath =
             (\mirror_point -> Tuple.second mirror_point |> Point2d.distanceFrom (startPoint lightPath))
 
 
-findLightPath : List Mirror -> LineSegment2d Pixels TopLeftCoordinates -> List (Point2d Pixels TopLeftCoordinates)
+findLightPath : List Mirror -> LineSegment2d Pixels Coordinates -> List (Point2d Pixels Coordinates)
 findLightPath mirrors path =
     case findClosestMirror mirrors path of
         Nothing ->
@@ -466,7 +360,7 @@ findLightPath mirrors path =
 
         Just ( mirror, intersectionPoint ) ->
             let
-                mirroredSegment : LineSegment2d Pixels TopLeftCoordinates
+                mirroredSegment : LineSegment2d Pixels Coordinates
                 mirroredSegment =
                     LineSegment2d.from intersectionPoint (endPoint path)
                         |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
@@ -477,7 +371,7 @@ findLightPath mirrors path =
 viewLightPath : List Mirror -> Object -> Bool -> Svg Msg
 viewLightPath mirrors object highlight =
     let
-        lightSegment : LineSegment2d Pixels TopLeftCoordinates
+        lightSegment : LineSegment2d Pixels Coordinates
         lightSegment =
             object.lightRay
                 |> Direction2d.toVector
@@ -485,7 +379,7 @@ viewLightPath mirrors object highlight =
                 |> LineSegment2d.fromPointAndVector
                     object.position
 
-        path : Polyline2d Pixels TopLeftCoordinates
+        path : Polyline2d Pixels Coordinates
         path =
             findLightPath mirrors lightSegment
                 |> Polyline2d.fromVertices
@@ -561,16 +455,16 @@ viewObject model object =
 type Msg
     = ClearSceneButtonPressed
     | ScenarioButtonPressed WhichScenario
-    | MouseOver (Maybe Id)
-    | OnDragBy (Vector2d Pixels TopLeftCoordinates)
-    | DragMsg (Draggable.Msg SelectableComponentId)
-    | DragLightRay (Draggable.Msg SelectableComponentId) MousePosition
-    | StartDragging SelectableComponentId
-    | StopDragging
     | AddObjectButtonPressed
     | AddObject (Id -> Object)
     | AddMirrorButtonPressed
     | AddMirror (Id -> Mirror)
+    | MouseOver (Maybe Id)
+    | OnDragBy (Vector2d Pixels Coordinates)
+    | DragMsg (Draggable.Msg SelectableComponentId)
+    | DragLightRay (Draggable.Msg SelectableComponentId) MousePosition
+    | StartDragging SelectableComponentId
+    | StopDragging
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -652,7 +546,7 @@ dragConfig =
         ]
 
 
-onDragBy : Model -> Vector2d Pixels TopLeftCoordinates -> Model
+onDragBy : Model -> Vector2d Pixels Coordinates -> Model
 onDragBy model delta =
     case model.currentlyDragging of
         Nothing ->
@@ -670,7 +564,7 @@ onDragBy model delta =
 
         Just (ObjectSelected LightRay id) ->
             let
-                lastMousePosition : Point2d Pixels TopLeftCoordinates
+                lastMousePosition : Point2d Pixels Coordinates
                 lastMousePosition =
                     model.lastMousePosition
                         |> Point2d.translateBy delta
@@ -692,7 +586,7 @@ onDragBy model delta =
             }
 
 
-dragObject : MousePosition -> Vector2d Pixels TopLeftCoordinates -> ObjectComponent -> Object -> Object
+dragObject : MousePosition -> Vector2d Pixels Coordinates -> ObjectComponent -> Object -> Object
 dragObject mousePosition delta component object =
     case component of
         ObjectPosition ->
@@ -712,10 +606,10 @@ dragObject mousePosition delta component object =
                     { object | lightRay = directionToMouse }
 
 
-dragMirror : Vector2d Pixels TopLeftCoordinates -> MirrorComponent -> Mirror -> Mirror
+dragMirror : Vector2d Pixels Coordinates -> MirrorComponent -> Mirror -> Mirror
 dragMirror delta component mirror =
     let
-        position : LineSegment2d Pixels TopLeftCoordinates
+        position : LineSegment2d Pixels Coordinates
         position =
             case component of
                 Segment ->
@@ -748,3 +642,105 @@ mousePositionDecoder =
     D.map2 Point2d.pixels
         (D.field "offsetX" D.float)
         (D.field "offsetY" D.float)
+
+
+
+-- SCENARIOS
+
+
+type WhichScenario
+    = Scenario1
+    | Scenario2
+    | Scenario3
+    | Scenario4
+    | Scenario5
+
+
+scenario : WhichScenario -> Model
+scenario whichScenario =
+    case whichScenario of
+        Scenario1 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 150 150) (Direction2d.degrees 45))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 20 400)
+                            (Point2d.pixels 800 400)
+                        )
+                    )
+
+        Scenario2 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 45))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 650)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 450 150)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+
+        Scenario3 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 45))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 650)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 800 200)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+
+        Scenario4 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 110))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 650)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 800 200)
+                            (Point2d.pixels 800 650)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 200)
+                            (Point2d.pixels 100 650)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 800 200)
+                            (Point2d.pixels 200 200)
+                        )
+                    )
+
+        Scenario5 ->
+            emptyModel
+                |> addObject (Object (Point2d.pixels 200 300) (Direction2d.degrees 70))
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 250)
+                            (Point2d.pixels 700 250)
+                        )
+                    )
+                |> addMirror
+                    (Mirror
+                        (LineSegment2d.from (Point2d.pixels 100 400)
+                            (Point2d.pixels 700 400)
+                        )
+                    )
