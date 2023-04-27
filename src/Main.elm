@@ -322,6 +322,28 @@ view model =
                     , styledButton ClearSceneButtonPressed "Clear Scene"
                     ]
                 ]
+            , Element.textColumn [ Element.spacing 10, Element.padding 10, alignLeft ]
+                [ text "Welcome! This is a tool designed to help explore how mirrors and objects interact. Please explore."
+                , el [] Element.none
+                , el [] Element.none
+                , Element.paragraph [] [ text "Here are some ways you can interact with it." ]
+                , Element.paragraph [] [ Element.text "• Move the objects by clicking and dragging an object (blue circle )" ]
+                , Element.paragraph [] [ Element.text "• Change the angle of light emitted from object by clicking on light ray (yellow line) and moving the mouse. Currently all objects emit light of the same brightness (represented by the length of the line) and there isn't a control to change that (yet)." ]
+                , Element.paragraph [] [ Element.text "• Mirrors are grey lines. Move the whole mirror by selecting somewhere in the middle nad drag the cursor. You can also move the end points of the mirror (grey circles at the mirror ends)" ]
+                , Element.paragraph [] [ Element.text "• Add in new mirrors and objects by pressing the buttons that say 'Add Another Object' or 'Add Another Mirror'. That will add in a mirror or object in a random position, you can then move it around to put it where you want it." ]
+                , el [] Element.none
+                , Element.paragraph []
+                    [ Element.text "Play around and have some fun. Here are some places to get started." ]
+                , Element.paragraph []
+                    [ Element.text "There are a few premade scenarios to explore." ]
+                , Element.paragraph []
+                    [ Element.text "Scenario 1 is one mirror and one object. This is a great place to start. What happens when you move the object? Does the angle change? What about when you change the angle of the light? Try moving the mirror. How does of moving the mirror without changing which way the mirror faces (by dragging in middle of the mirror instead of one of the end points) change what the light does?" ]
+                , Element.paragraph []
+                    [ Element.text "In scenario 2, what happens to the path of the light as you change one of mirrors by selecting an end point? Whats the difference between scenario 2 and scenario 3? Can you turn scenario 2 in scenario 3?" ]
+                , Element.paragraph []
+                    [ Element.text "In Scenario 4, without moving the object and only changing it's angle of light, can you get the light out of the box with light touching exactly 2 mirrors? Exactly 3 mirrors? 4 mirrors? No mirrors? What if the light was longer? " ]
+                , Element.paragraph [] [ Element.text "Try playing around with multiple objects. (Add objects with the button). When can the path of two objects' light rays reach other? When can't they? (There isn't a preset scenario for this, so make your own)" ]
+                ]
             ]
         ]
         |> Element.layout []
