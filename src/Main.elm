@@ -360,20 +360,32 @@ findClosestMirror mirrors lightPath =
             (\mirror_point -> Tuple.second mirror_point |> Point2d.distanceFrom (startPoint lightPath))
 
 
-findLightPath : List Mirror -> LineSegment2d Pixels Coordinates -> List (Point2d Pixels Coordinates)
+findLightPath : List Mirror -> LineSegment2d Pixels Coordinates -> { lightPath : List (Point2d Pixels Coordinates), mirroredSegments : List (LineSegment2d Pixels Coordinates) }
 findLightPath mirrors path =
     case findClosestMirror mirrors path of
         Nothing ->
-            [ startPoint path, endPoint path ]
+            { lightPath = [ startPoint path, endPoint path ], mirroredSegments = [] }
 
         Just ( mirror, intersectionPoint ) ->
             let
-                mirroredSegment : LineSegment2d Pixels Coordinates
-                mirroredSegment =
+                pathContinuation : LineSegment2d Pixels Coordinates
+                pathContinuation =
                     LineSegment2d.from intersectionPoint (endPoint path)
                         |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
+
+                reflection : LineSegment2d Pixels Coordinates
+                reflection =
+                    LineSegment2d.from (startPoint path) intersectionPoint
+                        |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
             in
-            startPoint path :: findLightPath mirrors mirroredSegment
+            let
+                result =
+                    findLightPath mirrors pathContinuation
+            in
+            { result
+                | lightPath = startPoint path :: result.lightPath
+                , mirroredSegments = reflection :: result.mirroredSegments
+            }
 
 
 viewLightPath : List Mirror -> Object -> Bool -> Svg Msg
@@ -387,35 +399,55 @@ viewLightPath mirrors object highlight =
                 |> LineSegment2d.fromPointAndVector
                     object.position
 
+        { lightPath, mirroredSegments } =
+            findLightPath mirrors lightSegment
+
         path : Polyline2d Pixels Coordinates
         path =
-            findLightPath mirrors lightSegment
-                |> Polyline2d.fromVertices
+            lightPath |> Polyline2d.fromVertices
     in
-    Svg.polyline2d
-        [ Attributes.stroke
-            (if highlight then
-                "yellow"
+    let
+        lightPathSvg =
+            Svg.polyline2d
+                [ Attributes.stroke
+                    (if highlight then
+                        "yellow"
 
-             else
-                "#FFFEB8"
-            )
-        , Attributes.strokeWidth
-            (if highlight then
-                "8"
+                     else
+                        "#FFFEB8"
+                    )
+                , Attributes.strokeWidth
+                    (if highlight then
+                        "8"
 
-             else
-                "5"
-            )
-        , Attributes.fill "none"
-        , strokeOpacity "0.9"
-        , Attributes.strokeLinecap "round"
-        , Attributes.strokeLinejoin "round"
-        , Draggable.customMouseTrigger (ObjectSelected LightRay object.id)
-            mousePositionDecoder
-            DragLightRay
-        ]
-        path
+                     else
+                        "5"
+                    )
+                , Attributes.fill "none"
+                , strokeOpacity "0.9"
+                , Attributes.strokeLinecap "round"
+                , Attributes.strokeLinejoin "round"
+                , Draggable.customMouseTrigger (ObjectSelected LightRay object.id)
+                    mousePositionDecoder
+                    DragLightRay
+                ]
+                path
+    in
+    Svg.g []
+        (lightPathSvg
+            :: List.map
+                (Svg.lineSegment2d
+                    [ Attributes.stroke "#FFFEB8"
+                    , Attributes.strokeWidth "5"
+                    , Attributes.fill "none"
+                    , strokeOpacity "0.9"
+                    , Attributes.strokeLinecap "round"
+                    , Attributes.strokeLinejoin "round"
+                    , Attributes.strokeDasharray "10,10"
+                    ]
+                )
+                mirroredSegments
+        )
 
 
 viewObject : Model -> Object -> Svg Msg
