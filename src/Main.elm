@@ -81,11 +81,11 @@ type alias Id =
 
 
 
--- ObjectComponent is selectable part of an object
+-- EyeComponent is selectable part of an eye
 
 
-type ObjectComponent
-    = ObjectPosition
+type EyeComponent
+    = EyePosition
     | LightRay
 
 
@@ -100,8 +100,9 @@ type MirrorComponent
 
 
 type SelectableComponentId
-    = ObjectSelected ObjectComponent Id
+    = EyeSelected EyeComponent Id
     | MirrorSelected MirrorComponent Id
+    | ObjectSelected Id
 
 
 
@@ -110,16 +111,34 @@ type SelectableComponentId
 
 type alias Object =
     { position : Point2d Pixels Coordinates
-    , lightRay : Direction2d Coordinates
     , id : Id
     }
 
 
 generateObject : Room -> Random.Generator (Id -> Object)
 generateObject room =
-    -- Ids need to be unique across objects and mirrors so the id is not attached until the object is added to the odel
-    Random.map2
+    -- Ids need to be unique across all elements so the id is not attached until the object is added to the model
+    Random.map
         Object
+        (Rectangle2d.randomPoint room)
+
+
+
+-- Eye
+
+
+type alias Eye =
+    { position : Point2d Pixels Coordinates
+    , lightRay : Direction2d Coordinates
+    , id : Id
+    }
+
+
+generateEye : Room -> Random.Generator (Id -> Eye)
+generateEye room =
+    -- Ids need to be unique across eyes and mirrors so the id is not attached until the eye is added to the odel
+    Random.map2
+        Eye
         (Rectangle2d.randomPoint room)
         Direction2d.random
 
@@ -159,6 +178,7 @@ type alias MousePosition =
 type alias Model =
     { room : Room
     , objects : Dict Id Object
+    , eyes : Dict Id Eye
     , mirrors : Dict Id Mirror
     , nextId : Int
     , drag : Draggable.State SelectableComponentId
@@ -177,6 +197,7 @@ emptyModel =
     { room =
         Rectangle2d.from (Point2d.pixels 0 0) (Point2d.pixels roomSize roomSize)
     , objects = Dict.empty
+    , eyes = Dict.empty
     , mirrors = Dict.empty
     , nextId = 1
     , drag = Draggable.init
@@ -210,32 +231,32 @@ view model =
                     , styledButton (ScenarioButtonPressed Scenario3) "Scenario 3"
                     , styledButton (ScenarioButtonPressed Scenario4) "Scenario 4"
                     , styledButton (ScenarioButtonPressed Scenario5) "Scenario 5"
-                    , styledButton AddObjectButtonPressed "Add Another Object"
+                    , styledButton AddEyeButtonPressed "Add Another Eye"
                     , styledButton AddMirrorButtonPressed "Add Another Mirror"
                     , styledButton ClearSceneButtonPressed "Clear Scene"
                     ]
                 ]
             , Element.textColumn [ Element.spacing 10, Element.padding 10, alignLeft ]
-                [ text "Welcome! This is a tool designed to help explore how mirrors and objects interact. Please explore."
+                [ text "Welcome! This is a tool designed to help explore how mirrors and eyes interact. Please explore."
                 , el [] Element.none
                 , el [] Element.none
                 , Element.paragraph [] [ text "Here are some ways you can interact with it." ]
-                , Element.paragraph [] [ Element.text "• Move the objects by clicking and dragging an object (blue circle )" ]
-                , Element.paragraph [] [ Element.text "• Change the angle of light emitted from object by clicking on light ray (yellow line) and moving the mouse. Currently all objects emit light of the same brightness (represented by the length of the line) and there isn't a control to change that (yet)." ]
+                , Element.paragraph [] [ Element.text "• Move the eyes by clicking and dragging an eye (blue circle )" ]
+                , Element.paragraph [] [ Element.text "• Change the angle of light emitted from eye by clicking on light ray (yellow line) and moving the mouse. Currently all eyes emit light of the same brightness (represented by the length of the line) and there isn't a control to change that (yet)." ]
                 , Element.paragraph [] [ Element.text "• Mirrors are grey lines. Move the whole mirror by selecting somewhere in the middle nad drag the cursor. You can also move the end points of the mirror (grey circles at the mirror ends)" ]
-                , Element.paragraph [] [ Element.text "• Add in new mirrors and objects by pressing the buttons that say 'Add Another Object' or 'Add Another Mirror'. That will add in a mirror or object in a random position, you can then move it around to put it where you want it." ]
+                , Element.paragraph [] [ Element.text "• Add in new mirrors and eyes by pressing the buttons that say 'Add Another Eye' or 'Add Another Mirror'. That will add in a mirror or eye in a random position, you can then move it around to put it where you want it." ]
                 , el [] Element.none
                 , Element.paragraph []
                     [ Element.text "Play around and have some fun. Here are some places to get started." ]
                 , Element.paragraph []
                     [ Element.text "There are a few premade scenarios to explore." ]
                 , Element.paragraph []
-                    [ Element.text "Scenario 1 is one mirror and one object. This is a great place to start. What happens when you move the object? Does the angle change? What about when you change the angle of the light? Try moving the mirror. How does of moving the mirror without changing which way the mirror faces (by dragging in middle of the mirror instead of one of the end points) change what the light does?" ]
+                    [ Element.text "Scenario 1 is one mirror and one eye. This is a great place to start. What happens when you move the eye? Does the angle change? What about when you change the angle of the light? Try moving the mirror. How does of moving the mirror without changing which way the mirror faces (by dragging in middle of the mirror instead of one of the end points) change what the light does?" ]
                 , Element.paragraph []
                     [ Element.text "In scenario 2, what happens to the path of the light as you change one of mirrors by selecting an end point? Whats the difference between scenario 2 and scenario 3? Can you turn scenario 2 in scenario 3?" ]
                 , Element.paragraph []
-                    [ Element.text "In Scenario 4, without moving the object and only changing it's angle of light, can you get the light out of the box with light touching exactly 2 mirrors? Exactly 3 mirrors? 4 mirrors? No mirrors? What if the light was longer? " ]
-                , Element.paragraph [] [ Element.text "Try playing around with multiple objects. (Add objects with the button). When can the path of two objects' light rays reach other? When can't they? (There isn't a preset scenario for this, so make your own)" ]
+                    [ Element.text "In Scenario 4, without moving the eye and only changing it's angle of light, can you get the light out of the box with light touching exactly 2 mirrors? Exactly 3 mirrors? 4 mirrors? No mirrors? What if the light was longer? " ]
+                , Element.paragraph [] [ Element.text "Try playing around with multiple eyes. (Add eyes with the button). When can the path of two eyes' light rays reach other? When can't they? (There isn't a preset scenario for this, so make your own)" ]
                 ]
             ]
         ]
@@ -260,7 +281,7 @@ viewScene model =
         ]
         (List.concat
             [ [ viewRoom model.room ]
-            , List.map (viewObject model) (Dict.values model.objects)
+            , List.map (viewEye model) (Dict.values model.eyes)
             , List.map
                 (viewMirror model)
                 (Dict.values model.mirrors)
@@ -388,16 +409,16 @@ findLightPath mirrors path =
             }
 
 
-viewLightPath : List Mirror -> Object -> Bool -> Svg Msg
-viewLightPath mirrors object highlight =
+viewLightPath : List Mirror -> Eye -> Bool -> Svg Msg
+viewLightPath mirrors eye highlight =
     let
         lightSegment : LineSegment2d Pixels Coordinates
         lightSegment =
-            object.lightRay
+            eye.lightRay
                 |> Direction2d.toVector
                 |> Vector2d.scaleTo (pixels lightLength)
                 |> LineSegment2d.fromPointAndVector
-                    object.position
+                    eye.position
 
         { lightPath, mirroredSegments } =
             findLightPath mirrors lightSegment
@@ -427,7 +448,7 @@ viewLightPath mirrors object highlight =
                 , strokeOpacity "0.9"
                 , Attributes.strokeLinecap "round"
                 , Attributes.strokeLinejoin "round"
-                , Draggable.customMouseTrigger (ObjectSelected LightRay object.id)
+                , Draggable.customMouseTrigger (EyeSelected LightRay eye.id)
                     mousePositionDecoder
                     DragLightRay
                 ]
@@ -450,15 +471,15 @@ viewLightPath mirrors object highlight =
         )
 
 
-viewObject : Model -> Object -> Svg Msg
-viewObject model object =
+viewEye : Model -> Eye -> Svg Msg
+viewEye model eye =
     let
         isHighlighted : Bool
         isHighlighted =
-            (model.highlightedElement == Just object.id)
+            (model.highlightedElement == Just eye.id)
                 || (case model.currentlyDragging of
-                        Just (ObjectSelected _ id) ->
-                            id == object.id
+                        Just (EyeSelected _ id) ->
+                            id == eye.id
 
                         _ ->
                             False
@@ -475,24 +496,42 @@ viewObject model object =
         shape : Svg Msg
         shape =
             Svg.circle2d
-                [ Attributes.fill "blue"
-                , Attributes.stroke
+                [ Attributes.fill
                     (if isHighlighted then
                         "green"
 
                      else
-                        "none"
+                        "white"
                     )
                 , Draggable.mouseTrigger
-                    (ObjectSelected ObjectPosition object.id)
+                    (EyeSelected EyePosition eye.id)
                     DragMsg
                 ]
                 (Circle2d.withRadius radius
-                    object.position
+                    eye.position
                 )
+
+        irisCenter : Point2d Pixels Coordinates
+        irisCenter =
+            eye.position
+                |> Point2d.translateIn eye.lightRay (radius |> Quantity.multiplyBy 0.5)
+
+        iris : Svg Msg
+        iris =
+            Svg.circle2d
+                [ Attributes.fill "purple"
+                ]
+                (radius |> Quantity.multiplyBy 0.35 |> Circle2d.atPoint irisCenter)
+
+        pupil : Svg Msg
+        pupil =
+            Svg.circle2d
+                [ Attributes.fill "black"
+                ]
+                (radius |> Quantity.multiplyBy 0.22 |> Circle2d.atPoint irisCenter)
     in
-    Svg.g (mouseOverEvents object.id)
-        [ viewLightPath (Dict.values model.mirrors) object isHighlighted, shape ]
+    Svg.g (mouseOverEvents eye.id)
+        [ viewLightPath (Dict.values model.mirrors) eye isHighlighted, shape, iris, pupil ]
 
 
 
@@ -502,8 +541,8 @@ viewObject model object =
 type Msg
     = ClearSceneButtonPressed
     | ScenarioButtonPressed WhichScenario
-    | AddObjectButtonPressed
-    | AddObject (Id -> Object)
+    | AddEyeButtonPressed
+    | AddEye (Id -> Eye)
     | AddMirrorButtonPressed
     | AddMirror (Id -> Mirror)
     | MouseOver (Maybe Id)
@@ -523,11 +562,11 @@ update msg model =
         ScenarioButtonPressed whichScenario ->
             ( scenario whichScenario, Cmd.none )
 
-        AddObjectButtonPressed ->
-            ( model, Random.generate AddObject (generateObject model.room) )
+        AddEyeButtonPressed ->
+            ( model, Random.generate AddEye (generateEye model.room) )
 
-        AddObject objectWithoutId ->
-            ( addObject objectWithoutId model
+        AddEye eyeWithoutId ->
+            ( addEye eyeWithoutId model
             , Cmd.none
             )
 
@@ -561,8 +600,8 @@ update msg model =
             ( onDragBy model delta, Cmd.none )
 
 
-addObject : (Id -> Object) -> Model -> Model
-addObject objectWithoutId model =
+addEye : (Id -> Eye) -> Model -> Model
+addEye eyeWithoutId model =
     let
         id : Id
         id =
@@ -570,7 +609,7 @@ addObject objectWithoutId model =
     in
     { model
         | nextId = model.nextId + 1
-        , objects = Dict.insert id (objectWithoutId id) model.objects
+        , eyes = Dict.insert id (eyeWithoutId id) model.eyes
     }
 
 
@@ -600,16 +639,24 @@ onDragBy model delta =
             -- Note: I think getting an onDragMsg if nothing is being dragged may represent a bug, and potentially something should be logged or this should be handled in some way
             model
 
-        Just (ObjectSelected ObjectPosition id) ->
-            -- not having an {object/mirror} corresponding to a dragged id is very suprising. Currently that case is being silently ignored
+        Just (ObjectSelected id) ->
             { model
                 | objects =
                     Dict.update id
-                        (Maybe.map (dragObject model.lastMousePosition delta ObjectPosition))
+                        (Maybe.map (dragObject model.lastMousePosition delta))
                         model.objects
             }
 
-        Just (ObjectSelected LightRay id) ->
+        Just (EyeSelected EyePosition id) ->
+            -- not having an {eye/mirror} corresponding to a dragged id is very suprising. Currently that case is being silently ignored
+            { model
+                | eyes =
+                    Dict.update id
+                        (Maybe.map (dragEye model.lastMousePosition delta EyePosition))
+                        model.eyes
+            }
+
+        Just (EyeSelected LightRay id) ->
             let
                 lastMousePosition : Point2d Pixels Coordinates
                 lastMousePosition =
@@ -618,10 +665,10 @@ onDragBy model delta =
             in
             { model
                 | lastMousePosition = lastMousePosition
-                , objects =
+                , eyes =
                     Dict.update id
-                        (Maybe.map (dragObject lastMousePosition delta LightRay))
-                        model.objects
+                        (Maybe.map (dragEye lastMousePosition delta LightRay))
+                        model.eyes
             }
 
         Just (MirrorSelected component id) ->
@@ -633,24 +680,33 @@ onDragBy model delta =
             }
 
 
-dragObject : MousePosition -> Vector2d Pixels Coordinates -> ObjectComponent -> Object -> Object
-dragObject mousePosition delta component object =
+dragObject : MousePosition -> Vector2d Pixels Coordinates -> Object -> Object
+dragObject mousePosition delta object =
+    { object
+        | position =
+            object.position
+                |> Point2d.translateBy delta
+    }
+
+
+dragEye : MousePosition -> Vector2d Pixels Coordinates -> EyeComponent -> Eye -> Eye
+dragEye mousePosition delta component eye =
     case component of
-        ObjectPosition ->
-            { object
+        EyePosition ->
+            { eye
                 | position =
-                    object.position
+                    eye.position
                         |> Point2d.translateBy delta
             }
 
         LightRay ->
-            case Direction2d.from object.position mousePosition of
+            case Direction2d.from eye.position mousePosition of
                 Nothing ->
-                    -- if the mouse position is exactly on the object there is no direction. Current logic is to ignore this case an not update the light ray
-                    object
+                    -- if the mouse position is exactly on the eye there is no direction. Current logic is to ignore this case an not update the light ray
+                    eye
 
                 Just directionToMouse ->
-                    { object | lightRay = directionToMouse }
+                    { eye | lightRay = directionToMouse }
 
 
 dragMirror : Vector2d Pixels Coordinates -> MirrorComponent -> Mirror -> Mirror
@@ -708,7 +764,7 @@ scenario whichScenario =
     case whichScenario of
         Scenario1 ->
             emptyModel
-                |> addObject (Object (Point2d.pixels 150 150) (Direction2d.degrees 45))
+                |> addEye (Eye (Point2d.pixels 150 150) (Direction2d.degrees 45))
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 20 400)
@@ -718,7 +774,7 @@ scenario whichScenario =
 
         Scenario2 ->
             emptyModel
-                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 45))
+                |> addEye (Eye (Point2d.pixels 400 400) (Direction2d.degrees 45))
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 100 650)
@@ -734,7 +790,7 @@ scenario whichScenario =
 
         Scenario3 ->
             emptyModel
-                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 45))
+                |> addEye (Eye (Point2d.pixels 400 400) (Direction2d.degrees 45))
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 100 650)
@@ -750,7 +806,7 @@ scenario whichScenario =
 
         Scenario4 ->
             emptyModel
-                |> addObject (Object (Point2d.pixels 400 400) (Direction2d.degrees 110))
+                |> addEye (Eye (Point2d.pixels 400 400) (Direction2d.degrees 110))
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 100 650)
@@ -778,7 +834,7 @@ scenario whichScenario =
 
         Scenario5 ->
             emptyModel
-                |> addObject (Object (Point2d.pixels 200 300) (Direction2d.degrees 70))
+                |> addEye (Eye (Point2d.pixels 200 300) (Direction2d.degrees 70))
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 100 250)
