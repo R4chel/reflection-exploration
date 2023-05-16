@@ -111,6 +111,7 @@ type SelectableComponentId
 
 type alias Object =
     { position : Point2d Pixels Coordinates
+    , radius : Quantity Float Pixels
     , id : Id
     }
 
@@ -118,9 +119,10 @@ type alias Object =
 generateObject : Room -> Random.Generator (Id -> Object)
 generateObject room =
     -- Ids need to be unique across all elements so the id is not attached until the object is added to the model
-    Random.map
+    Random.map2
         Object
         (Rectangle2d.randomPoint room)
+        (Random.map pixels (Random.float 15 30))
 
 
 
@@ -275,6 +277,11 @@ styledButton action label =
 
 viewScene : Model -> Html Msg
 viewScene model =
+    let
+        lightPaths : List (Polyline2d Pixels Coordinates)
+        lightPaths =
+            List.map (calculateLightPath (Dict.values model.mirrors)) (Dict.values model.eyes)
+    in
     Svg.svg
         [ width imageSize
         , height imageSize
@@ -282,8 +289,8 @@ viewScene model =
         ]
         (List.concat
             [ [ viewRoom model.room ]
-            , List.map (viewObject model) (Dict.values model.objects)
             , List.map (viewEye model) (Dict.values model.eyes)
+            , List.map (viewObject model lightPaths) (Dict.values model.objects)
             , List.map
                 (viewMirror model)
                 (Dict.values model.mirrors)
@@ -307,8 +314,8 @@ mouseOverEvents id =
     ]
 
 
-viewObject : Model -> Object -> Svg Msg
-viewObject model object =
+viewObject : Model -> List (Polyline2d Pixels Coordinates) -> Object -> Svg Msg
+viewObject model lightPaths object =
     let
         isHighlighted : Bool
         isHighlighted =
@@ -321,19 +328,26 @@ viewObject model object =
                             False
                    )
 
+        isSeen : Bool
+        isSeen =
+            List.any (pathIntersectsObject object) lightPaths
+
         radius : Quantity Float Pixels
         radius =
             if isHighlighted then
-                pixels 30
+                object.radius |> Quantity.multiplyBy 1.2
 
             else
-                pixels 25
+                object.radius
 
         shape : Svg Msg
         shape =
             Svg.circle2d
                 [ Attributes.fill
-                    (if isHighlighted then
+                    (if isSeen then
+                        "red"
+
+                     else if isHighlighted then
                         "aqua"
 
                      else
@@ -451,6 +465,30 @@ findLightPath mirrors path =
                 | lightPath = startPoint path :: result.lightPath
                 , mirroredSegments = reflection :: result.mirroredSegments
             }
+
+
+pathIntersectsObject : Object -> Polyline2d Pixels Coordinates -> Bool
+pathIntersectsObject object path =
+    Polyline2d.segments path
+        |> List.filterMap (\segment -> Axis2d.throughPoints (startPoint segment) (endPoint segment))
+        |> List.any (\axis -> Point2d.signedDistanceFrom axis object.position |> Quantity.abs |> Quantity.lessThanOrEqualTo object.radius)
+
+
+calculateLightPath : List Mirror -> Eye -> Polyline2d Pixels Coordinates
+calculateLightPath mirrors eye =
+    let
+        lightSegment : LineSegment2d Pixels Coordinates
+        lightSegment =
+            eye.lightRay
+                |> Direction2d.toVector
+                |> Vector2d.scaleTo (pixels lightLength)
+                |> LineSegment2d.fromPointAndVector
+                    eye.position
+
+        { lightPath, mirroredSegments } =
+            findLightPath mirrors lightSegment
+    in
+    lightPath |> Polyline2d.fromVertices
 
 
 viewLightPath : List Mirror -> Eye -> Bool -> Svg Msg
