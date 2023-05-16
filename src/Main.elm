@@ -231,6 +231,7 @@ view model =
                     , styledButton (ScenarioButtonPressed Scenario3) "Scenario 3"
                     , styledButton (ScenarioButtonPressed Scenario4) "Scenario 4"
                     , styledButton (ScenarioButtonPressed Scenario5) "Scenario 5"
+                    , styledButton AddObjectButtonPressed "Add Another Object"
                     , styledButton AddEyeButtonPressed "Add Another Eye"
                     , styledButton AddMirrorButtonPressed "Add Another Mirror"
                     , styledButton ClearSceneButtonPressed "Clear Scene"
@@ -281,6 +282,7 @@ viewScene model =
         ]
         (List.concat
             [ [ viewRoom model.room ]
+            , List.map (viewObject model) (Dict.values model.objects)
             , List.map (viewEye model) (Dict.values model.eyes)
             , List.map
                 (viewMirror model)
@@ -303,6 +305,49 @@ mouseOverEvents id =
     [ Svg.Events.onMouseOver (MouseOver (Just id))
     , Svg.Events.onMouseOut (MouseOver Nothing)
     ]
+
+
+viewObject : Model -> Object -> Svg Msg
+viewObject model object =
+    let
+        isHighlighted : Bool
+        isHighlighted =
+            (model.highlightedElement == Just object.id)
+                || (case model.currentlyDragging of
+                        Just (ObjectSelected id) ->
+                            id == object.id
+
+                        _ ->
+                            False
+                   )
+
+        radius : Quantity Float Pixels
+        radius =
+            if isHighlighted then
+                pixels 30
+
+            else
+                pixels 25
+
+        shape : Svg Msg
+        shape =
+            Svg.circle2d
+                [ Attributes.fill
+                    (if isHighlighted then
+                        "aqua"
+
+                     else
+                        "teal"
+                    )
+                , Draggable.mouseTrigger
+                    (ObjectSelected object.id)
+                    DragMsg
+                ]
+                (Circle2d.withRadius radius
+                    object.position
+                )
+    in
+    Svg.g (mouseOverEvents object.id) [ shape ]
 
 
 viewMirror : Model -> Mirror -> Svg Msg
@@ -398,8 +443,7 @@ findLightPath mirrors path =
                 reflection =
                     LineSegment2d.from (startPoint path) intersectionPoint
                         |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
-            in
-            let
+
                 result =
                     findLightPath mirrors pathContinuation
             in
@@ -426,8 +470,7 @@ viewLightPath mirrors eye highlight =
         path : Polyline2d Pixels Coordinates
         path =
             lightPath |> Polyline2d.fromVertices
-    in
-    let
+
         lightPathSvg =
             Svg.polyline2d
                 [ Attributes.stroke
@@ -493,8 +536,8 @@ viewEye model eye =
             else
                 pixels 25
 
-        shape : Svg Msg
-        shape =
+        eyeBall : Svg Msg
+        eyeBall =
             Svg.circle2d
                 [ Attributes.fill
                     (if isHighlighted then
@@ -531,7 +574,7 @@ viewEye model eye =
                 (radius |> Quantity.multiplyBy 0.22 |> Circle2d.atPoint irisCenter)
     in
     Svg.g (mouseOverEvents eye.id)
-        [ viewLightPath (Dict.values model.mirrors) eye isHighlighted, shape, iris, pupil ]
+        [ viewLightPath (Dict.values model.mirrors) eye isHighlighted, eyeBall, iris, pupil ]
 
 
 
@@ -541,6 +584,8 @@ viewEye model eye =
 type Msg
     = ClearSceneButtonPressed
     | ScenarioButtonPressed WhichScenario
+    | AddObjectButtonPressed
+    | AddObject (Id -> Object)
     | AddEyeButtonPressed
     | AddEye (Id -> Eye)
     | AddMirrorButtonPressed
@@ -561,6 +606,14 @@ update msg model =
 
         ScenarioButtonPressed whichScenario ->
             ( scenario whichScenario, Cmd.none )
+
+        AddObjectButtonPressed ->
+            ( model, Random.generate AddObject (generateObject model.room) )
+
+        AddObject objectWithoutId ->
+            ( addObject objectWithoutId model
+            , Cmd.none
+            )
 
         AddEyeButtonPressed ->
             ( model, Random.generate AddEye (generateEye model.room) )
@@ -600,6 +653,19 @@ update msg model =
             ( onDragBy model delta, Cmd.none )
 
 
+addObject : (Id -> Object) -> Model -> Model
+addObject objectWithoutId model =
+    let
+        id : Id
+        id =
+            model.nextId
+    in
+    { model
+        | nextId = model.nextId + 1
+        , objects = Dict.insert id (objectWithoutId id) model.objects
+    }
+
+
 addEye : (Id -> Eye) -> Model -> Model
 addEye eyeWithoutId model =
     let
@@ -620,7 +686,10 @@ addMirror mirrorWithoutId model =
         id =
             model.nextId
     in
-    { model | nextId = model.nextId + 1, mirrors = Dict.insert id (mirrorWithoutId id) model.mirrors }
+    { model
+        | nextId = model.nextId + 1
+        , mirrors = Dict.insert id (mirrorWithoutId id) model.mirrors
+    }
 
 
 dragConfig : Draggable.Config SelectableComponentId Msg
@@ -643,7 +712,7 @@ onDragBy model delta =
             { model
                 | objects =
                     Dict.update id
-                        (Maybe.map (dragObject model.lastMousePosition delta))
+                        (Maybe.map (dragObject delta))
                         model.objects
             }
 
@@ -680,8 +749,8 @@ onDragBy model delta =
             }
 
 
-dragObject : MousePosition -> Vector2d Pixels Coordinates -> Object -> Object
-dragObject mousePosition delta object =
+dragObject : Vector2d Pixels Coordinates -> Object -> Object
+dragObject delta object =
     { object
         | position =
             object.position
