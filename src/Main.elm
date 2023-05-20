@@ -505,6 +505,9 @@ viewLightPath mirrors eye highlight =
         { lightPath, mirroredSegments } =
             findLightPath mirrors lightSegment
 
+        { lightPath, mirroredSegments } =
+            findLightPath mirrors lightSegment
+
         path : Polyline2d Pixels Coordinates
         path =
             lightPath |> Polyline2d.fromVertices
