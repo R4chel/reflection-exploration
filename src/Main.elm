@@ -47,6 +47,16 @@ lightLength =
 
 
 
+-- comparisonTolerance is used for determing if two floats are equal.
+-- Note the specific value for comparisonTolerance was chosen relatively arbitrarily not tested and this choice may cause some surprising behaviors.
+
+
+comparisonTolerance : Quantity Float Pixels
+comparisonTolerance =
+    pixels 1
+
+
+
 -- MAIN
 
 
@@ -433,7 +443,7 @@ findClosestMirror mirrors lightPath =
         |> List.filter
             (\mirror_intersectionPoint ->
                 Tuple.second mirror_intersectionPoint
-                    |> Point2d.equalWithin (Pixels.float 1) (startPoint lightPath)
+                    |> Point2d.equalWithin comparisonTolerance (startPoint lightPath)
                     |> not
             )
         |> Quantity.minimumBy
@@ -467,11 +477,60 @@ findLightPath mirrors path =
             }
 
 
+pointIsOnSegment : LineSegment2d Pixels Coordinates -> Point2d Pixels Coordinates -> Bool
+pointIsOnSegment segment point =
+    let
+        -- solve for tX in parameterized form segment
+        x0 : Quantity Float Pixels
+        x0 =
+            Point2d.xCoordinate (startPoint segment)
+
+        x1 : Quantity Float Pixels
+        x1 =
+            Point2d.xCoordinate (endPoint segment)
+
+        tX : Float
+        tX =
+            Quantity.difference (Point2d.xCoordinate point) x0
+                |> Quantity.ratio (Quantity.difference x1 x0)
+    in
+    0 <= tX && tX <= 1 && (LineSegment2d.interpolate segment tX |> Point2d.equalWithin comparisonTolerance point)
+
+
+segmentIntersectsObject : Object -> LineSegment2d Pixels Coordinates -> Bool
+segmentIntersectsObject object segment =
+    case Axis2d.throughPoints (startPoint segment) (endPoint segment) of
+        Nothing ->
+            False
+
+        Just axis ->
+            let
+                projectedPoint : Point2d Pixels Coordinates
+                projectedPoint =
+                    Point2d.projectOnto axis object.position
+
+                px : Quantity Float Pixels
+                px =
+                    Point2d.xCoordinate projectedPoint
+
+                x0 : Quantity Float Pixels
+                x0 =
+                    Point2d.xCoordinate (startPoint segment)
+
+                x1 : Quantity Float Pixels
+                x1 =
+                    Point2d.xCoordinate (endPoint segment)
+            in
+            -- check projected point is within object that projected point is within endpoints of segment
+            (projectedPoint |> Point2d.distanceFrom object.position |> Quantity.abs |> Quantity.lessThanOrEqualTo object.radius)
+                && Quantity.greaterThanOrEqualTo px (Quantity.min x0 x1)
+                && Quantity.lessThanOrEqualTo px (Quantity.max x0 x1)
+
+
 pathIntersectsObject : Object -> Polyline2d Pixels Coordinates -> Bool
 pathIntersectsObject object path =
     Polyline2d.segments path
-        |> List.filterMap (\segment -> Axis2d.throughPoints (startPoint segment) (endPoint segment))
-        |> List.any (\axis -> Point2d.signedDistanceFrom axis object.position |> Quantity.abs |> Quantity.lessThanOrEqualTo object.radius)
+        |> List.any (segmentIntersectsObject object)
 
 
 calculateLightPath : List Mirror -> Eye -> Polyline2d Pixels Coordinates
