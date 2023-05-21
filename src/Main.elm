@@ -534,8 +534,8 @@ segmentIntersectsObject object segment =
             in
             -- check projected point is within object that projected point is within endpoints of segment
             (projectedPoint |> Point2d.distanceFrom object.position |> Quantity.abs |> Quantity.lessThanOrEqualTo object.radius)
-                && Quantity.greaterThanOrEqualTo px (Quantity.min x0 x1)
-                && Quantity.lessThanOrEqualTo px (Quantity.max x0 x1)
+                && Quantity.greaterThanOrEqualTo (Quantity.min x0 x1) px
+                && Quantity.lessThanOrEqualTo (Quantity.max x0 x1) px
 
 
 pathIntersectsObject : Object -> Polyline2d Pixels Coordinates -> Bool
