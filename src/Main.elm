@@ -370,8 +370,19 @@ viewObject model lightPaths object =
                 (Circle2d.withRadius radius
                     object.position
                 )
+
+        debuggingCollision : List (Svg Msg)
+        debuggingCollision =
+            List.concatMap Polyline2d.segments lightPaths
+                |> List.filterMap (\segment -> Axis2d.throughPoints (startPoint segment) (endPoint segment))
+                |> List.map
+                    (\axis ->
+                        Point2d.projectOnto axis object.position
+                            |> Circle2d.withRadius (pixels 10)
+                            |> Svg.circle2d [ Attributes.fill "purple" ]
+                    )
     in
-    Svg.g (mouseOverEvents object.id) [ shape ]
+    Svg.g (mouseOverEvents object.id) ([ shape ] ++ debuggingCollision)
 
 
 viewMirror : Model -> Mirror -> Svg Msg
