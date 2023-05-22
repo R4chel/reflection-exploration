@@ -338,9 +338,13 @@ viewObject model lightPaths object =
                             False
                    )
 
+        intersectingPaths : List (Polyline2d Pixels Coordinates)
+        intersectingPaths =
+            List.filter (pathIntersectsObject object) lightPaths
+
         isSeen : Bool
         isSeen =
-            List.any (pathIntersectsObject object) lightPaths
+            not (List.isEmpty intersectingPaths)
 
         radius : Quantity Float Pixels
         radius =
@@ -536,6 +540,28 @@ calculateLightPath mirrors eye =
     findLightPath mirrors lightSegment |> Polyline2d.fromVertices
 
 
+lightPathContinuations : Polyline2d Pixels Coordinates -> List (Svg Msg)
+lightPathContinuations lightPath =
+    lightPath
+        |> Polyline2d.segments
+        |> List.reverse
+        |> List.drop 1
+        |> List.map
+            (\segment ->
+                LineSegment2d.interpolate segment 3
+                    |> LineSegment2d.from (endPoint segment)
+                    |> Svg.lineSegment2d
+                        [ Attributes.stroke "#FFFEB8"
+                        , Attributes.strokeWidth "5"
+                        , Attributes.fill "none"
+                        , strokeOpacity "0.9"
+                        , Attributes.strokeLinecap "round"
+                        , Attributes.strokeLinejoin "round"
+                        , Attributes.strokeDasharray "10,10"
+                        ]
+            )
+
+
 viewLightPath : List Mirror -> Eye -> Bool -> Svg Msg
 viewLightPath mirrors eye highlight =
     let
@@ -553,31 +579,35 @@ viewLightPath mirrors eye highlight =
         path : Polyline2d Pixels Coordinates
         path =
             lightPath |> Polyline2d.fromVertices
+
+        lightPathSvg : Svg Msg
+        lightPathSvg =
+            Svg.polyline2d
+                [ Attributes.stroke
+                    (if highlight then
+                        "yellow"
+
+                     else
+                        "#FFFEB8"
+                    )
+                , Attributes.strokeWidth
+                    (if highlight then
+                        "8"
+
+                     else
+                        "5"
+                    )
+                , Attributes.fill "none"
+                , strokeOpacity "0.9"
+                , Attributes.strokeLinecap "round"
+                , Attributes.strokeLinejoin "round"
+                , Draggable.customMouseTrigger (EyeSelected LightRay eye.id)
+                    mousePositionDecoder
+                    DragLightRay
+                ]
+                path
     in
-    Svg.polyline2d
-        [ Attributes.stroke
-            (if highlight then
-                "yellow"
-
-             else
-                "#FFFEB8"
-            )
-        , Attributes.strokeWidth
-            (if highlight then
-                "8"
-
-             else
-                "5"
-            )
-        , Attributes.fill "none"
-        , strokeOpacity "0.9"
-        , Attributes.strokeLinecap "round"
-        , Attributes.strokeLinejoin "round"
-        , Draggable.customMouseTrigger (EyeSelected LightRay eye.id)
-            mousePositionDecoder
-            DragLightRay
-        ]
-        path
+    Svg.g [] (lightPathSvg :: lightPathContinuations path)
 
 
 viewEye : Model -> Eye -> Svg Msg
