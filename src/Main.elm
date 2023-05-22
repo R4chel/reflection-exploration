@@ -501,31 +501,7 @@ pointIsOnSegment segment point =
                 (Quantity.difference (Point2d.xCoordinate point) x0)
                 (Quantity.difference x1 x0)
     in
-    let
-        result =
-            0 <= tX && tX <= 1 && (LineSegment2d.interpolate segment tX |> Point2d.equalWithin comparisonTolerance point)
-    in
-    let
-        toPrint =
-            { segment = segment
-            , point = point
-            , tX = tX
-            , interpolatedPoint = LineSegment2d.interpolate segment tX
-            , x0 = x0
-            , x1 = x1
-            , foo = Quantity.difference (Point2d.xCoordinate point) x0
-            , bar = Quantity.difference x1 x0
-            , zap = Quantity.ratio (pixels 380) (pixels 780)
-            }
-
-        _ =
-            if not result then
-                Debug.log "not intersecting" toPrint
-
-            else
-                toPrint
-    in
-    result
+    0 <= tX && tX <= 1 && (LineSegment2d.interpolate segment tX |> Point2d.equalWithin comparisonTolerance point)
 
 
 segmentIntersectsObject : Object -> LineSegment2d Pixels Coordinates -> Bool
