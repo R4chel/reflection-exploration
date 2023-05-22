@@ -931,6 +931,7 @@ scenario whichScenario =
         Scenario1 ->
             emptyModel
                 |> addEye (Eye (Point2d.pixels 150 150) (Direction2d.degrees 45))
+                |> addObject (Object (Point2d.pixels 500 250) (pixels 25))
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 20 400)
