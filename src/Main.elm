@@ -15,6 +15,7 @@ import Geometry.Svg as Svg
 import Html exposing (Html)
 import Json.Decode as D
 import LineSegment2d exposing (LineSegment2d, endPoint, startPoint)
+import List.Extra
 import Pixels exposing (Pixels, pixels)
 import Point2d exposing (Point2d)
 import Polyline2d exposing (Polyline2d)
@@ -375,7 +376,7 @@ viewObject model lightPaths object =
                     object.position
                 )
     in
-    Svg.g (mouseOverEvents object.id) [ shape ]
+    Svg.g (mouseOverEvents object.id) (shape :: List.concatMap (virtualObjects model object) intersectingPaths)
 
 
 viewMirror : Model -> Mirror -> Svg Msg
@@ -421,6 +422,18 @@ viewMirror model mirror =
             ]
             (Circle2d.withRadius (pixels 10) (endPoint mirror.position))
         ]
+
+
+type Intersection
+    = OneMirror Mirror
+    | MultipleMirrors ( Mirror, Mirror, List Mirror )
+
+
+type alias ReflectedLightPath =
+    { source : Eye
+    , path : List ( Point2d Pixels Coordinates, Intersection )
+    , endPoint : Point2d Pixels Coordinates
+    }
 
 
 mirrorAsAxis : Mirror -> Axis2d Pixels Coordinates
@@ -484,10 +497,35 @@ pointIsOnSegment segment point =
 
         tX : Float
         tX =
-            Quantity.difference (Point2d.xCoordinate point) x0
-                |> Quantity.ratio (Quantity.difference x1 x0)
+            Quantity.ratio
+                (Quantity.difference (Point2d.xCoordinate point) x0)
+                (Quantity.difference x1 x0)
     in
-    0 <= tX && tX <= 1 && (LineSegment2d.interpolate segment tX |> Point2d.equalWithin comparisonTolerance point)
+    let
+        result =
+            0 <= tX && tX <= 1 && (LineSegment2d.interpolate segment tX |> Point2d.equalWithin comparisonTolerance point)
+    in
+    let
+        toPrint =
+            { segment = segment
+            , point = point
+            , tX = tX
+            , interpolatedPoint = LineSegment2d.interpolate segment tX
+            , x0 = x0
+            , x1 = x1
+            , foo = Quantity.difference (Point2d.xCoordinate point) x0
+            , bar = Quantity.difference x1 x0
+            , zap = Quantity.ratio (pixels 380) (pixels 780)
+            }
+
+        _ =
+            if not result then
+                Debug.log "not intersecting" toPrint
+
+            else
+                toPrint
+    in
+    result
 
 
 segmentIntersectsObject : Object -> LineSegment2d Pixels Coordinates -> Bool
@@ -548,7 +586,7 @@ lightPathContinuations lightPath =
         |> List.drop 1
         |> List.map
             (\segment ->
-                LineSegment2d.interpolate segment 3
+                LineSegment2d.interpolate segment 10
                     |> LineSegment2d.from (endPoint segment)
                     |> Svg.lineSegment2d
                         [ Attributes.stroke "#FFFEB8"
@@ -560,6 +598,41 @@ lightPathContinuations lightPath =
                         , Attributes.strokeDasharray "10,10"
                         ]
             )
+
+
+reversedReflectedLightPathToSegmentsWithIntersections : ReflectedLightPath -> List ( LineSegment2d Pixels Coordinates, Intersection )
+reversedReflectedLightPathToSegmentsWithIntersections reflectedLightPath =
+    List.foldr
+        (\point_and_intersection last_point_and_accum ->
+            ( Tuple.first point_and_intersection, ( LineSegment2d.from (Tuple.first last_point_and_accum) (Tuple.first point_and_intersection), Tuple.second point_and_intersection ) :: Tuple.second last_point_and_accum )
+        )
+        ( reflectedLightPath.endPoint, [] )
+        reflectedLightPath.path
+        |> Tuple.second
+
+
+virtualObjects : Model -> Object -> Polyline2d Pixels Coordinates -> List (Svg Msg)
+virtualObjects model object path =
+    path
+        |> Polyline2d.segments
+        |> List.drop 1
+        |> List.reverse
+        |> List.Extra.dropWhile (\segment -> not (segmentIntersectsObject object segment))
+        |> List.foldl
+            (\segment positions ->
+                let
+                    lastPosition : Point2d Pixels Coordinates
+                    lastPosition =
+                        List.head positions |> Maybe.withDefault object.position
+                in
+                (List.filter (\mirror -> pointIsOnSegment mirror.position (startPoint segment)) (Dict.values model.mirrors)
+                    |> List.foldl (\mirror position -> Point2d.mirrorAcross (mirrorAsAxis mirror) position) lastPosition
+                )
+                    :: positions
+            )
+            []
+        |> List.map (Circle2d.withRadius object.radius)
+        |> List.map (Svg.circle2d [ Attributes.fill "pink" ])
 
 
 viewLightPath : List Mirror -> Eye -> Bool -> Svg Msg
