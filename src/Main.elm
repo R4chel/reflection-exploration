@@ -450,11 +450,11 @@ findClosestMirror mirrors lightPath =
             (\mirror_point -> Tuple.second mirror_point |> Point2d.distanceFrom (startPoint lightPath))
 
 
-findLightPath : List Mirror -> LineSegment2d Pixels Coordinates -> { lightPath : List (Point2d Pixels Coordinates), mirroredSegments : List (LineSegment2d Pixels Coordinates) }
+findLightPath : List Mirror -> LineSegment2d Pixels Coordinates -> List (Point2d Pixels Coordinates)
 findLightPath mirrors path =
     case findClosestMirror mirrors path of
         Nothing ->
-            { lightPath = [ startPoint path, endPoint path ], mirroredSegments = [] }
+            [ startPoint path, endPoint path ]
 
         Just ( mirror, intersectionPoint ) ->
             let
@@ -462,19 +462,8 @@ findLightPath mirrors path =
                 pathContinuation =
                     LineSegment2d.from intersectionPoint (endPoint path)
                         |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
-
-                reflection : LineSegment2d Pixels Coordinates
-                reflection =
-                    LineSegment2d.from (startPoint path) intersectionPoint
-                        |> LineSegment2d.mirrorAcross (mirrorAsAxis mirror)
-
-                result =
-                    findLightPath mirrors pathContinuation
             in
-            { result
-                | lightPath = startPoint path :: result.lightPath
-                , mirroredSegments = reflection :: result.mirroredSegments
-            }
+            startPoint path :: findLightPath mirrors pathContinuation
 
 
 pointIsOnSegment : LineSegment2d Pixels Coordinates -> Point2d Pixels Coordinates -> Bool
@@ -543,11 +532,8 @@ calculateLightPath mirrors eye =
                 |> Vector2d.scaleTo (pixels lightLength)
                 |> LineSegment2d.fromPointAndVector
                     eye.position
-
-        { lightPath, mirroredSegments } =
-            findLightPath mirrors lightSegment
     in
-    lightPath |> Polyline2d.fromVertices
+    findLightPath mirrors lightSegment |> Polyline2d.fromVertices
 
 
 viewLightPath : List Mirror -> Eye -> Bool -> Svg Msg
@@ -561,54 +547,37 @@ viewLightPath mirrors eye highlight =
                 |> LineSegment2d.fromPointAndVector
                     eye.position
 
-        { lightPath, mirroredSegments } =
+        lightPath =
             findLightPath mirrors lightSegment
 
         path : Polyline2d Pixels Coordinates
         path =
             lightPath |> Polyline2d.fromVertices
-
-        lightPathSvg =
-            Svg.polyline2d
-                [ Attributes.stroke
-                    (if highlight then
-                        "yellow"
-
-                     else
-                        "#FFFEB8"
-                    )
-                , Attributes.strokeWidth
-                    (if highlight then
-                        "8"
-
-                     else
-                        "5"
-                    )
-                , Attributes.fill "none"
-                , strokeOpacity "0.9"
-                , Attributes.strokeLinecap "round"
-                , Attributes.strokeLinejoin "round"
-                , Draggable.customMouseTrigger (EyeSelected LightRay eye.id)
-                    mousePositionDecoder
-                    DragLightRay
-                ]
-                path
     in
-    Svg.g []
-        (lightPathSvg
-            :: List.map
-                (Svg.lineSegment2d
-                    [ Attributes.stroke "#FFFEB8"
-                    , Attributes.strokeWidth "5"
-                    , Attributes.fill "none"
-                    , strokeOpacity "0.9"
-                    , Attributes.strokeLinecap "round"
-                    , Attributes.strokeLinejoin "round"
-                    , Attributes.strokeDasharray "10,10"
-                    ]
-                )
-                mirroredSegments
-        )
+    Svg.polyline2d
+        [ Attributes.stroke
+            (if highlight then
+                "yellow"
+
+             else
+                "#FFFEB8"
+            )
+        , Attributes.strokeWidth
+            (if highlight then
+                "8"
+
+             else
+                "5"
+            )
+        , Attributes.fill "none"
+        , strokeOpacity "0.9"
+        , Attributes.strokeLinecap "round"
+        , Attributes.strokeLinejoin "round"
+        , Draggable.customMouseTrigger (EyeSelected LightRay eye.id)
+            mousePositionDecoder
+            DragLightRay
+        ]
+        path
 
 
 viewEye : Model -> Eye -> Svg Msg
