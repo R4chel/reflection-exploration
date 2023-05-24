@@ -561,28 +561,6 @@ calculateLightPath mirrors eye =
     findLightPath mirrors lightSegment |> Polyline2d.fromVertices
 
 
-lightPathContinuations : Polyline2d Pixels Coordinates -> List (Svg Msg)
-lightPathContinuations lightPath =
-    lightPath
-        |> Polyline2d.segments
-        |> List.reverse
-        |> List.drop 1
-        |> List.map
-            (\segment ->
-                LineSegment2d.interpolate segment 10
-                    |> LineSegment2d.from (endPoint segment)
-                    |> Svg.lineSegment2d
-                        [ Attributes.stroke "#FFFEB8"
-                        , Attributes.strokeWidth "5"
-                        , Attributes.fill "none"
-                        , strokeOpacity "0.9"
-                        , Attributes.strokeLinecap "round"
-                        , Attributes.strokeLinejoin "round"
-                        , Attributes.strokeDasharray "10,10"
-                        ]
-            )
-
-
 virtualObjects : Model -> Object -> Polyline2d Pixels Coordinates -> List (Svg Msg)
 virtualObjects model object path =
     path
