@@ -257,7 +257,7 @@ view model =
                 , Element.paragraph [] [ text "Here are some ways you can interact with it." ]
                 , Element.paragraph [] [ Element.text "• Move the eyes by clicking and dragging an eye (blue circle )" ]
                 , Element.paragraph [] [ Element.text "• Change the angle of light emitted from eye by clicking on light ray (yellow line) and moving the mouse. Currently all eyes emit light of the same brightness (represented by the length of the line) and there isn't a control to change that (yet)." ]
-                , Element.paragraph [] [ Element.text "• Mirrors are grey lines. Move the whole mirror by selecting somewhere in the middle nad drag the cursor. You can also move the end points of the mirror (grey circles at the mirror ends)" ]
+                , Element.paragraph [] [ Element.text "• Mirrors are grey lines. Move the whole mirror by selecting somewhere in the middle and drag the cursor. You can also move the end points of the mirror (grey circles at the mirror ends)" ]
                 , Element.paragraph [] [ Element.text "• Add in new mirrors and eyes by pressing the buttons that say 'Add Another Eye' or 'Add Another Mirror'. That will add in a mirror or eye in a random position, you can then move it around to put it where you want it." ]
                 , el [] Element.none
                 , Element.paragraph []
@@ -424,18 +424,6 @@ viewMirror model mirror =
         ]
 
 
-type Intersection
-    = OneMirror Mirror
-    | MultipleMirrors ( Mirror, Mirror, List Mirror )
-
-
-type alias ReflectedLightPath =
-    { source : Eye
-    , path : List ( Point2d Pixels Coordinates, Intersection )
-    , endPoint : Point2d Pixels Coordinates
-    }
-
-
 mirrorAsAxis : Mirror -> Axis2d Pixels Coordinates
 mirrorAsAxis mirror =
     Axis2d.throughPoints (startPoint mirror.position) (endPoint mirror.position)
@@ -574,17 +562,6 @@ lightPathContinuations lightPath =
                         , Attributes.strokeDasharray "10,10"
                         ]
             )
-
-
-reversedReflectedLightPathToSegmentsWithIntersections : ReflectedLightPath -> List ( LineSegment2d Pixels Coordinates, Intersection )
-reversedReflectedLightPathToSegmentsWithIntersections reflectedLightPath =
-    List.foldr
-        (\point_and_intersection last_point_and_accum ->
-            ( Tuple.first point_and_intersection, ( LineSegment2d.from (Tuple.first last_point_and_accum) (Tuple.first point_and_intersection), Tuple.second point_and_intersection ) :: Tuple.second last_point_and_accum )
-        )
-        ( reflectedLightPath.endPoint, [] )
-        reflectedLightPath.path
-        |> Tuple.second
 
 
 virtualObjects : Model -> Object -> Polyline2d Pixels Coordinates -> List (Svg Msg)
