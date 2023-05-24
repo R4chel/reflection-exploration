@@ -1049,13 +1049,14 @@ scenario whichScenario =
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 800 200)
-                            (Point2d.pixels 200 200)
+                            (Point2d.pixels 400 200)
                         )
                     )
 
         Scenario5 ->
             emptyModel
                 |> addEye (Eye (Point2d.pixels 200 300) (Direction2d.degrees 70))
+                |> addObject (Object (Point2d.pixels 400 300) (pixels 22) "mediumpurple")
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 100 250)
@@ -1064,7 +1065,7 @@ scenario whichScenario =
                     )
                 |> addMirror
                     (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 400)
-                            (Point2d.pixels 700 400)
+                        (LineSegment2d.from (Point2d.pixels 100 350)
+                            (Point2d.pixels 700 350)
                         )
                     )
