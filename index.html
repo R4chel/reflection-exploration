@@ -5582,44 +5582,58 @@ var $author$project$Main$scenario = function (whichScenario) {
 				$author$project$Main$Mirror(
 					A2(
 						$ianmackenzie$elm_geometry$LineSegment2d$from,
-						A2($ianmackenzie$elm_geometry$Point2d$pixels, 450, 150),
-						A2($ianmackenzie$elm_geometry$Point2d$pixels, 800, 650))),
+						A2($ianmackenzie$elm_geometry$Point2d$pixels, 350, 50),
+						A2($ianmackenzie$elm_geometry$Point2d$pixels, 700, 550))),
 				A2(
 					$author$project$Main$addMirror,
 					$author$project$Main$Mirror(
 						A2(
 							$ianmackenzie$elm_geometry$LineSegment2d$from,
-							A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 650),
-							A2($ianmackenzie$elm_geometry$Point2d$pixels, 800, 650))),
+							A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 550),
+							A2($ianmackenzie$elm_geometry$Point2d$pixels, 700, 550))),
 					A2(
-						$author$project$Main$addEye,
+						$author$project$Main$addObject,
+						A3(
+							$author$project$Main$Object,
+							A2($ianmackenzie$elm_geometry$Point2d$pixels, 480, 420),
+							$ianmackenzie$elm_units$Pixels$pixels(20),
+							'indigo'),
 						A2(
-							$author$project$Main$Eye,
-							A2($ianmackenzie$elm_geometry$Point2d$pixels, 400, 400),
-							$ianmackenzie$elm_geometry$Direction2d$degrees(45)),
-						$author$project$Main$emptyModel)));
+							$author$project$Main$addEye,
+							A2(
+								$author$project$Main$Eye,
+								A2($ianmackenzie$elm_geometry$Point2d$pixels, 300, 300),
+								$ianmackenzie$elm_geometry$Direction2d$degrees(55)),
+							$author$project$Main$emptyModel))));
 		case 2:
 			return A2(
 				$author$project$Main$addMirror,
 				$author$project$Main$Mirror(
 					A2(
 						$ianmackenzie$elm_geometry$LineSegment2d$from,
-						A2($ianmackenzie$elm_geometry$Point2d$pixels, 800, 200),
-						A2($ianmackenzie$elm_geometry$Point2d$pixels, 800, 650))),
+						A2($ianmackenzie$elm_geometry$Point2d$pixels, 600, 200),
+						A2($ianmackenzie$elm_geometry$Point2d$pixels, 600, 650))),
 				A2(
 					$author$project$Main$addMirror,
 					$author$project$Main$Mirror(
 						A2(
 							$ianmackenzie$elm_geometry$LineSegment2d$from,
 							A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 650),
-							A2($ianmackenzie$elm_geometry$Point2d$pixels, 800, 650))),
+							A2($ianmackenzie$elm_geometry$Point2d$pixels, 600, 650))),
 					A2(
-						$author$project$Main$addEye,
+						$author$project$Main$addObject,
+						A3(
+							$author$project$Main$Object,
+							A2($ianmackenzie$elm_geometry$Point2d$pixels, 480, 380),
+							$ianmackenzie$elm_units$Pixels$pixels(40),
+							'slateblue'),
 						A2(
-							$author$project$Main$Eye,
-							A2($ianmackenzie$elm_geometry$Point2d$pixels, 400, 400),
-							$ianmackenzie$elm_geometry$Direction2d$degrees(45)),
-						$author$project$Main$emptyModel)));
+							$author$project$Main$addEye,
+							A2(
+								$author$project$Main$Eye,
+								A2($ianmackenzie$elm_geometry$Point2d$pixels, 200, 400),
+								$ianmackenzie$elm_geometry$Direction2d$degrees(45)),
+							$author$project$Main$emptyModel))));
 		case 3:
 			return A2(
 				$author$project$Main$addMirror,
@@ -5627,7 +5641,7 @@ var $author$project$Main$scenario = function (whichScenario) {
 					A2(
 						$ianmackenzie$elm_geometry$LineSegment2d$from,
 						A2($ianmackenzie$elm_geometry$Point2d$pixels, 800, 200),
-						A2($ianmackenzie$elm_geometry$Point2d$pixels, 200, 200))),
+						A2($ianmackenzie$elm_geometry$Point2d$pixels, 400, 200))),
 				A2(
 					$author$project$Main$addMirror,
 					$author$project$Main$Mirror(
@@ -5650,20 +5664,27 @@ var $author$project$Main$scenario = function (whichScenario) {
 									A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 650),
 									A2($ianmackenzie$elm_geometry$Point2d$pixels, 800, 650))),
 							A2(
-								$author$project$Main$addEye,
-								A2(
-									$author$project$Main$Eye,
+								$author$project$Main$addObject,
+								A3(
+									$author$project$Main$Object,
 									A2($ianmackenzie$elm_geometry$Point2d$pixels, 400, 400),
-									$ianmackenzie$elm_geometry$Direction2d$degrees(110)),
-								$author$project$Main$emptyModel)))));
+									$ianmackenzie$elm_units$Pixels$pixels(30),
+									'orchid'),
+								A2(
+									$author$project$Main$addEye,
+									A2(
+										$author$project$Main$Eye,
+										A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 100),
+										$ianmackenzie$elm_geometry$Direction2d$degrees(50)),
+									$author$project$Main$emptyModel))))));
 		default:
 			return A2(
 				$author$project$Main$addMirror,
 				$author$project$Main$Mirror(
 					A2(
 						$ianmackenzie$elm_geometry$LineSegment2d$from,
-						A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 400),
-						A2($ianmackenzie$elm_geometry$Point2d$pixels, 700, 400))),
+						A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 350),
+						A2($ianmackenzie$elm_geometry$Point2d$pixels, 700, 350))),
 				A2(
 					$author$project$Main$addMirror,
 					$author$project$Main$Mirror(
@@ -5672,12 +5693,19 @@ var $author$project$Main$scenario = function (whichScenario) {
 							A2($ianmackenzie$elm_geometry$Point2d$pixels, 100, 250),
 							A2($ianmackenzie$elm_geometry$Point2d$pixels, 700, 250))),
 					A2(
-						$author$project$Main$addEye,
+						$author$project$Main$addObject,
+						A3(
+							$author$project$Main$Object,
+							A2($ianmackenzie$elm_geometry$Point2d$pixels, 400, 300),
+							$ianmackenzie$elm_units$Pixels$pixels(22),
+							'mediumpurple'),
 						A2(
-							$author$project$Main$Eye,
-							A2($ianmackenzie$elm_geometry$Point2d$pixels, 200, 300),
-							$ianmackenzie$elm_geometry$Direction2d$degrees(70)),
-						$author$project$Main$emptyModel)));
+							$author$project$Main$addEye,
+							A2(
+								$author$project$Main$Eye,
+								A2($ianmackenzie$elm_geometry$Point2d$pixels, 200, 300),
+								$ianmackenzie$elm_geometry$Direction2d$degrees(70)),
+							$author$project$Main$emptyModel))));
 	}
 };
 var $author$project$Main$init = function (_v0) {
@@ -13571,7 +13599,7 @@ var $ianmackenzie$elm_geometry$Geometry$Types$Polyline2d = $elm$core$Basics$iden
 var $ianmackenzie$elm_geometry$Polyline2d$fromVertices = function (givenVertices) {
 	return givenVertices;
 };
-var $author$project$Main$lightLength = 1000;
+var $author$project$Main$lightLength = 10000;
 var $ianmackenzie$elm_geometry$Vector2d$zero = {dE: 0, dF: 0};
 var $ianmackenzie$elm_geometry$Vector2d$scaleTo = F2(
 	function (_v0, _v1) {
@@ -14159,24 +14187,51 @@ var $ianmackenzie$elm_units$Quantity$difference = F2(
 		var y = _v1;
 		return x - y;
 	});
+var $ianmackenzie$elm_units$Quantity$equalWithin = F3(
+	function (_v0, _v1, _v2) {
+		var tolerance = _v0;
+		var x = _v1;
+		var y = _v2;
+		return _Utils_cmp(
+			$elm$core$Basics$abs(x - y),
+			tolerance) < 1;
+	});
 var $author$project$Main$pointIsOnSegment = F2(
 	function (segment, point) {
 		var x1 = $ianmackenzie$elm_geometry$Point2d$xCoordinate(
 			$ianmackenzie$elm_geometry$LineSegment2d$endPoint(segment));
 		var x0 = $ianmackenzie$elm_geometry$Point2d$xCoordinate(
 			$ianmackenzie$elm_geometry$LineSegment2d$startPoint(segment));
-		var tX = A2(
-			$ianmackenzie$elm_units$Quantity$ratio,
-			A2(
-				$ianmackenzie$elm_units$Quantity$difference,
+		if (A3($ianmackenzie$elm_units$Quantity$equalWithin, $author$project$Main$comparisonTolerance, x1, x0)) {
+			var y1 = $ianmackenzie$elm_geometry$Point2d$yCoordinate(
+				$ianmackenzie$elm_geometry$LineSegment2d$endPoint(segment));
+			var y0 = $ianmackenzie$elm_geometry$Point2d$yCoordinate(
+				$ianmackenzie$elm_geometry$LineSegment2d$startPoint(segment));
+			return A3(
+				$ianmackenzie$elm_units$Quantity$equalWithin,
+				$author$project$Main$comparisonTolerance,
 				$ianmackenzie$elm_geometry$Point2d$xCoordinate(point),
-				x0),
-			A2($ianmackenzie$elm_units$Quantity$difference, x1, x0));
-		return (0 <= tX) && ((tX <= 1) && A3(
-			$ianmackenzie$elm_geometry$Point2d$equalWithin,
-			$author$project$Main$comparisonTolerance,
-			point,
-			A2($ianmackenzie$elm_geometry$LineSegment2d$interpolate, segment, tX)));
+				x0) && (A2(
+				$ianmackenzie$elm_units$Quantity$greaterThanOrEqualTo,
+				A2($ianmackenzie$elm_units$Quantity$min, y0, y1),
+				$ianmackenzie$elm_geometry$Point2d$yCoordinate(point)) && A2(
+				$ianmackenzie$elm_units$Quantity$lessThanOrEqualTo,
+				A2($ianmackenzie$elm_units$Quantity$max, y0, y1),
+				$ianmackenzie$elm_geometry$Point2d$yCoordinate(point)));
+		} else {
+			var tX = A2(
+				$ianmackenzie$elm_units$Quantity$ratio,
+				A2(
+					$ianmackenzie$elm_units$Quantity$difference,
+					$ianmackenzie$elm_geometry$Point2d$xCoordinate(point),
+					x0),
+				A2($ianmackenzie$elm_units$Quantity$difference, x1, x0));
+			return (0 <= tX) && ((tX <= 1) && A3(
+				$ianmackenzie$elm_geometry$Point2d$equalWithin,
+				$author$project$Main$comparisonTolerance,
+				point,
+				A2($ianmackenzie$elm_geometry$LineSegment2d$interpolate, segment, tX)));
+		}
 	});
 var $author$project$Main$virtualObjects = F3(
 	function (model, object, path) {
