@@ -364,8 +364,11 @@ viewObject model lightPaths object =
                     (if isHighlighted then
                         "green"
 
-                     else
+                     else if isSeen then
                         object.color
+
+                     else
+                        "grey"
                     )
                 , Draggable.mouseTrigger
                     (ObjectSelected object.id)
@@ -617,7 +620,7 @@ viewLightPath mirrors eye highlight =
             Svg.polyline2d
                 [ Attributes.stroke
                     (if highlight then
-                        "yellow"
+                        "green"
 
                      else
                         "#FFFEB8"
