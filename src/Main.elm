@@ -123,6 +123,7 @@ type SelectableComponentId
 type alias Object =
     { position : Point2d Pixels Coordinates
     , radius : Quantity Float Pixels
+    , color : String
     , id : Id
     }
 
@@ -130,10 +131,11 @@ type alias Object =
 generateObject : Room -> Random.Generator (Id -> Object)
 generateObject room =
     -- Ids need to be unique across all elements so the id is not attached until the object is added to the model
-    Random.map2
+    Random.map3
         Object
         (Rectangle2d.randomPoint room)
         (Random.map pixels (Random.float 15 30))
+        (Random.uniform "teal" [ "red", "stateblue", "orchid", "plum", "coral", "navy", "darkcyan", "seagreen" ])
 
 
 
@@ -359,14 +361,11 @@ viewObject model lightPaths object =
         shape =
             Svg.circle2d
                 [ Attributes.fill
-                    (if isSeen then
-                        "red"
-
-                     else if isHighlighted then
-                        "aqua"
+                    (if isHighlighted then
+                        "green"
 
                      else
-                        "teal"
+                        object.color
                     )
                 , Draggable.mouseTrigger
                     (ObjectSelected object.id)
@@ -585,7 +584,14 @@ virtualObjects model object path =
             )
             []
         |> List.map (Circle2d.withRadius object.radius)
-        |> List.map (Svg.circle2d [ Attributes.fill "pink" ])
+        |> List.map
+            (Svg.circle2d
+                [ Attributes.fill object.color
+                , Attributes.fillOpacity "0.6"
+                , Attributes.strokeWidth "2"
+                , Attributes.stroke object.color
+                ]
+            )
 
 
 viewLightPath : List Mirror -> Eye -> Bool -> Svg Msg
@@ -633,7 +639,7 @@ viewLightPath mirrors eye highlight =
                 ]
                 path
     in
-    Svg.g [] (lightPathSvg :: lightPathContinuations path)
+    Svg.g [] [ lightPathSvg ]
 
 
 viewEye : Model -> Eye -> Svg Msg
@@ -956,7 +962,7 @@ scenario whichScenario =
         Scenario1 ->
             emptyModel
                 |> addEye (Eye (Point2d.pixels 150 150) (Direction2d.degrees 45))
-                |> addObject (Object (Point2d.pixels 500 250) (pixels 25))
+                |> addObject (Object (Point2d.pixels 500 250) (pixels 25) "teal")
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 20 400)
