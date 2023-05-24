@@ -44,7 +44,7 @@ roomSize =
 
 lightLength : Float
 lightLength =
-    1000
+    10000
 
 
 
@@ -476,7 +476,6 @@ findLightPath mirrors path =
 pointIsOnSegment : LineSegment2d Pixels Coordinates -> Point2d Pixels Coordinates -> Bool
 pointIsOnSegment segment point =
     let
-        -- solve for tX in parameterized form segment
         x0 : Quantity Float Pixels
         x0 =
             Point2d.xCoordinate (startPoint segment)
@@ -484,14 +483,32 @@ pointIsOnSegment segment point =
         x1 : Quantity Float Pixels
         x1 =
             Point2d.xCoordinate (endPoint segment)
-
-        tX : Float
-        tX =
-            Quantity.ratio
-                (Quantity.difference (Point2d.xCoordinate point) x0)
-                (Quantity.difference x1 x0)
     in
-    0 <= tX && tX <= 1 && (LineSegment2d.interpolate segment tX |> Point2d.equalWithin comparisonTolerance point)
+    if Quantity.equalWithin comparisonTolerance x1 x0 then
+        -- avoid division by zero for lines parallel to the y-axis by handling that case separately
+        let
+            y0 : Quantity Float Pixels
+            y0 =
+                Point2d.yCoordinate (startPoint segment)
+
+            y1 : Quantity Float Pixels
+            y1 =
+                Point2d.yCoordinate (endPoint segment)
+        in
+        Quantity.equalWithin comparisonTolerance (Point2d.xCoordinate point) x0
+            && Quantity.greaterThanOrEqualTo (Quantity.min y0 y1) (Point2d.yCoordinate point)
+            && Quantity.lessThanOrEqualTo (Quantity.max y0 y1) (Point2d.yCoordinate point)
+
+    else
+        let
+            tX : Float
+            tX =
+                -- solve for tX in parameterized form segment
+                Quantity.ratio
+                    (Quantity.difference (Point2d.xCoordinate point) x0)
+                    (Quantity.difference x1 x0)
+        in
+        0 <= tX && tX <= 1 && (LineSegment2d.interpolate segment tX |> Point2d.equalWithin comparisonTolerance point)
 
 
 segmentIntersectsObject : Object -> LineSegment2d Pixels Coordinates -> Bool
@@ -975,39 +992,42 @@ scenario whichScenario =
 
         Scenario2 ->
             emptyModel
-                |> addEye (Eye (Point2d.pixels 400 400) (Direction2d.degrees 45))
+                |> addEye (Eye (Point2d.pixels 300 300) (Direction2d.degrees 55))
+                |> addObject (Object (Point2d.pixels 480 420) (pixels 20) "indigo")
                 |> addMirror
                     (Mirror
-                        (LineSegment2d.from (Point2d.pixels 100 650)
-                            (Point2d.pixels 800 650)
+                        (LineSegment2d.from (Point2d.pixels 100 550)
+                            (Point2d.pixels 700 550)
                         )
                     )
                 |> addMirror
                     (Mirror
-                        (LineSegment2d.from (Point2d.pixels 450 150)
-                            (Point2d.pixels 800 650)
+                        (LineSegment2d.from (Point2d.pixels 350 50)
+                            (Point2d.pixels 700 550)
                         )
                     )
 
         Scenario3 ->
             emptyModel
-                |> addEye (Eye (Point2d.pixels 400 400) (Direction2d.degrees 45))
+                |> addEye (Eye (Point2d.pixels 200 400) (Direction2d.degrees 45))
+                |> addObject (Object (Point2d.pixels 480 380) (pixels 40) "slateblue")
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 100 650)
-                            (Point2d.pixels 800 650)
+                            (Point2d.pixels 600 650)
                         )
                     )
                 |> addMirror
                     (Mirror
-                        (LineSegment2d.from (Point2d.pixels 800 200)
-                            (Point2d.pixels 800 650)
+                        (LineSegment2d.from (Point2d.pixels 600 200)
+                            (Point2d.pixels 600 650)
                         )
                     )
 
         Scenario4 ->
             emptyModel
-                |> addEye (Eye (Point2d.pixels 400 400) (Direction2d.degrees 110))
+                |> addEye (Eye (Point2d.pixels 100 100) (Direction2d.degrees 50))
+                |> addObject (Object (Point2d.pixels 400 400) (pixels 30) "orchid")
                 |> addMirror
                     (Mirror
                         (LineSegment2d.from (Point2d.pixels 100 650)
